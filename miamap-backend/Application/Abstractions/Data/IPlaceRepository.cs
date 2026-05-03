@@ -16,5 +16,13 @@ public interface IPlaceRepository
 		double radiusInMeters,
 		int limit,
 		CancellationToken cancellationToken = default);
+
+	Task<IReadOnlyList<BoudingBoxResult>> BoudingBoxSearchAsync(
+		double minLatitude,
+		double minLongitude,
+		double maxLatitude,
+		double maxLongitude,
+		int limit,
+		CancellationToken cancellationToken = default);
 }
 

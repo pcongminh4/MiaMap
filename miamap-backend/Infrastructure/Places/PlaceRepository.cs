@@ -2,6 +2,7 @@ using Application.Abstractions.Data;
 using Domain.Places;
 using Infrastructure.Database;
 using Microsoft.EntityFrameworkCore;
+using NetTopologySuite.Geometries;
 
 namespace Infrastructure.Places;
 
@@ -62,11 +63,7 @@ public sealed class PlaceRepository(ApplicationDbContext dbContext) : IPlaceRepo
 		int limit,
 		CancellationToken cancellationToken = default)
 	{
-		const double earthRadiusMeters = 6371000d;
-		const double degreeToRadians = Math.PI / 180d;
-		var latitudeRad = latitude * degreeToRadians;
-		var cosLatitude = Math.Cos(latitudeRad);
-		var sinLatitude = Math.Sin(latitudeRad);
+		var searchPoint = new Point(longitude, latitude) { SRID = 4326 };
 
 		var results = await dbContext.Places
 			.AsNoTracking()
@@ -77,14 +74,11 @@ public sealed class PlaceRepository(ApplicationDbContext dbContext) : IPlaceRepo
 				place.Name,
 				place.Category,
 				place.Address,
-				place.Latitude,
-				place.Longitude,
+				Latitude = place.Point.Y,
+				Longitude = place.Point.X,
 				place.Rating,
 				place.ReviewCount,
-				DistanceInMeters = earthRadiusMeters * Math.Acos(
-					cosLatitude * Math.Cos(place.Latitude * degreeToRadians) *
-					Math.Cos((place.Longitude - longitude) * degreeToRadians) +
-					sinLatitude * Math.Sin(place.Latitude * degreeToRadians))
+				DistanceInMeters = place.Point.Distance(searchPoint)
 			})
 			.Where(place => place.DistanceInMeters <= radiusInMeters)
 			.OrderBy(place => place.DistanceInMeters)
@@ -105,6 +99,48 @@ public sealed class PlaceRepository(ApplicationDbContext dbContext) : IPlaceRepo
 				place.ReviewCount,
 				place.DistanceInMeters))
 			.ToList();
+	}
+
+	public async Task<IReadOnlyList<BoudingBoxResult>> BoudingBoxSearchAsync(
+		double minLatitude,
+		double minLongitude,
+		double maxLatitude,
+		double maxLongitude,
+		int limit,
+		CancellationToken cancellationToken = default)
+	{
+		var envelope = new Polygon(new LinearRing(new[]
+		{
+			new Coordinate(minLongitude, minLatitude),
+			new Coordinate(minLongitude, maxLatitude),
+			new Coordinate(maxLongitude, maxLatitude),
+			new Coordinate(maxLongitude, minLatitude),
+			new Coordinate(minLongitude, minLatitude)
+		}))
+		{
+			SRID = 4326
+		};
+
+		var results = await dbContext.Places
+			.AsNoTracking()
+			.Where(place => place.IsActive)
+			.Where(place => place.Point.Within(envelope))
+			.OrderByDescending(place => place.Rating)
+			.ThenByDescending(place => place.ReviewCount)
+			.Take(limit)
+			.Select(place => new BoudingBoxResult(
+				place.Id,
+				place.Name,
+				place.Category,
+				place.Address,
+				place.Point.Y,
+				place.Point.X,
+				place.Rating,
+				place.ReviewCount))
+			.ToListAsync(cancellationToken)
+			.ConfigureAwait(false);
+
+		return results;
 	}
 }
 

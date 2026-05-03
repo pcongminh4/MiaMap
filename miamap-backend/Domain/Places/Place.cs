@@ -1,3 +1,5 @@
+using NetTopologySuite.Geometries;
+
 namespace Domain.Places;
 
 public sealed class Place
@@ -14,8 +16,7 @@ public sealed class Place
 		Name = name;
 		Category = category;
 		Address = address;
-		Latitude = latitude;
-		Longitude = longitude;
+		Point = CreatePoint(latitude, longitude);
 		Rating = rating;
 		ReviewCount = reviewCount;
 		CreatedAtUtc = DateTime.UtcNow;
@@ -34,9 +35,7 @@ public sealed class Place
 
 	public string? Address { get; private set; }
 
-	public double Latitude { get; private set; }
-
-	public double Longitude { get; private set; }
+	public Point Point { get; private set; } = new(0, 0) { SRID = 4326 };
 
 	public double Rating { get; private set; }
 
@@ -112,8 +111,7 @@ public sealed class Place
 
 	public void UpdateLocation(double latitude, double longitude)
 	{
-		Latitude = latitude;
-		Longitude = longitude;
+		Point = CreatePoint(latitude, longitude);
 		UpdatedAtUtc = DateTime.UtcNow;
 	}
 
@@ -151,5 +149,10 @@ public sealed class Place
 		Tags = string.IsNullOrWhiteSpace(tags) ? null : tags;
 		LastSyncedAtUtc = syncedAtUtc;
 		UpdatedAtUtc = DateTime.UtcNow;
+	}
+
+	private static Point CreatePoint(double latitude, double longitude)
+	{
+		return new Point(longitude, latitude) { SRID = 4326 };
 	}
 }

@@ -1,6 +1,7 @@
 using Domain.Places;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using NetTopologySuite.Geometries;
 
 namespace Infrastructure.Places;
 
@@ -30,12 +31,9 @@ public sealed class PlaceConfiguration : IEntityTypeConfiguration<Place>
 			.HasColumnName("address")
 			.HasMaxLength(500);
 
-		builder.Property(place => place.Latitude)
-			.HasColumnName("latitude")
-			.IsRequired();
-
-		builder.Property(place => place.Longitude)
-			.HasColumnName("longitude")
+		builder.Property(place => place.Point)
+			.HasColumnName("point")
+			.HasColumnType("geometry(point, 4326)")
 			.IsRequired();
 
 		builder.Property(place => place.Rating)
@@ -79,9 +77,9 @@ public sealed class PlaceConfiguration : IEntityTypeConfiguration<Place>
 		builder.HasIndex(place => place.Category)
 			.HasDatabaseName("ix_places_category");
 
-		builder.HasIndex(place => new { place.Latitude, place.Longitude })
-			.HasDatabaseName("ix_places_latitude_longitude");
-
+		builder.HasIndex(place => place.Point)
+			.HasDatabaseName("ix_places_point");
+			
 		builder.HasIndex(place => place.IsActive)
 			.HasDatabaseName("ix_places_is_active");
 

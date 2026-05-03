@@ -23,7 +23,7 @@ public static class DependencyInjection
         }
 
         services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseNpgsql(connectionString));
+            options.UseNpgsql(connectionString, npgsqlOptions => npgsqlOptions.UseNetTopologySuite()));
 
         services.AddScoped<IUnitOfWork>(serviceProvider => serviceProvider.GetRequiredService<ApplicationDbContext>());
         services.AddScoped<IPlaceRepository, PlaceRepository>();

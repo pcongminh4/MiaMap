@@ -5,15 +5,16 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using NetTopologySuite.Geometries;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Infrastructure.Migrations
+namespace Infrastructure.Database.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260404174725_InitialIntIds")]
-    partial class InitialIntIds
+    [Migration("20260503065451_init")]
+    partial class init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -23,6 +24,7 @@ namespace Infrastructure.Migrations
                 .HasAnnotation("ProductVersion", "9.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "postgis");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("Domain.Places.Place", b =>
@@ -67,19 +69,16 @@ namespace Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_synced_at_utc");
 
-                    b.Property<double>("Latitude")
-                        .HasColumnType("double precision")
-                        .HasColumnName("latitude");
-
-                    b.Property<double>("Longitude")
-                        .HasColumnType("double precision")
-                        .HasColumnName("longitude");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name");
+
+                    b.Property<Point>("Point")
+                        .IsRequired()
+                        .HasColumnType("geometry(point, 4326)")
+                        .HasColumnName("point");
 
                     b.Property<double>("Rating")
                         .HasColumnType("double precision")
@@ -110,8 +109,8 @@ namespace Infrastructure.Migrations
                     b.HasIndex("IsActive")
                         .HasDatabaseName("ix_places_is_active");
 
-                    b.HasIndex("Latitude", "Longitude")
-                        .HasDatabaseName("ix_places_latitude_longitude");
+                    b.HasIndex("Point")
+                        .HasDatabaseName("ix_places_point");
 
                     b.HasIndex("Source", "ExternalId")
                         .IsUnique()

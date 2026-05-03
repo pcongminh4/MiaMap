@@ -1,17 +1,21 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
+using NetTopologySuite.Geometries;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Infrastructure.Migrations
+namespace Infrastructure.Database.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialIntIds : Migration
+    public partial class init : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AlterDatabase()
+                .Annotation("Npgsql:PostgresExtension:postgis", ",,");
+
             migrationBuilder.CreateTable(
                 name: "places",
                 columns: table => new
@@ -21,8 +25,7 @@ namespace Infrastructure.Migrations
                     name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     category = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     address = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    latitude = table.Column<double>(type: "double precision", nullable: false),
-                    longitude = table.Column<double>(type: "double precision", nullable: false),
+                    point = table.Column<Point>(type: "geometry(point, 4326)", nullable: false),
                     rating = table.Column<double>(type: "double precision", nullable: false),
                     review_count = table.Column<int>(type: "integer", nullable: false),
                     is_active = table.Column<bool>(type: "boolean", nullable: false),
@@ -68,9 +71,9 @@ namespace Infrastructure.Migrations
                 column: "is_active");
 
             migrationBuilder.CreateIndex(
-                name: "ix_places_latitude_longitude",
+                name: "ix_places_point",
                 table: "places",
-                columns: new[] { "latitude", "longitude" });
+                column: "point");
 
             migrationBuilder.CreateIndex(
                 name: "ux_places_source_external_id",
