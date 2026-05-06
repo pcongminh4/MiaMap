@@ -1,7 +1,7 @@
 import { http } from '../../lib/http'
 import type { BackendGeocodeResponse, BackendRouteResponse } from './map.dto'
 import type { IMapService } from './contracts'
-import type { MapPoint, NearbyPlace, SearchNearbyPlacesRequest } from './types'
+import type { BoundingBoxPlace, MapPoint, NearbyPlace, SearchBoundingBoxPlacesRequest, SearchNearbyPlacesRequest } from './types'
 
 export const mapService: IMapService = {
   async geocodeLocation(query: string): Promise<MapPoint | null> {
@@ -54,4 +54,18 @@ export const mapService: IMapService = {
 
     return response.data ?? []
   },
+
+  async boundingBoxSearch(request: SearchBoundingBoxPlacesRequest) {
+    const response = await http.get<BoundingBoxPlace[]>('/places/bounding-box', {
+      params: {
+        MinLatitude: request.minLatitude,
+        MaxLatitude: request.maxLatitude,
+        MinLongitude: request.minLongitude,
+        MaxLongitude: request.maxLongitude,
+        Limit: request.limit,
+      },
+    })
+
+    return response.data ?? []
+  }
 }

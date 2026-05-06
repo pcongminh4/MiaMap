@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { Icon } from 'leaflet'
 import type { LatLngTuple, Map as LeafletMap } from 'leaflet'
 import { CircleMarker, MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
-import type { NearbyPlace } from '../../../services'
+import type { BoundingBoxPlace } from '../../../services/map/types'
 
 type MapBridgeProps = {
   onMapReady: (map: LeafletMap) => void
@@ -13,33 +13,43 @@ type HomeMapProps = {
   origin: LatLngTuple
   destination: LatLngTuple
   route: LatLngTuple[]
-  nearbyPlaces: NearbyPlace[]
+  boundingBoxPlaces: BoundingBoxPlace[]
   maxMapZoom: number
   onMapReady: (map: LeafletMap) => void
 }
 
 const categoryIconPathMap: Record<string, string> = {
-  cafe: '/map_icons/cafe.png',
-  restaurant: '/map_icons/restaurant.png',
-  fast_food: '/map_icons/fast_food.png',
-  fuel: '/map_icons/fuel.png',
+  artwork: '/map_icons/artwork.png',
   atm: '/map_icons/atm.png',
+  bakery: '/map_icons/bakery.png',
   bank: '/map_icons/bank.png',
   bar: '/map_icons/bar.png',
-  pub: '/map_icons/pub.png',
-  post_office: '/map_icons/post_office.png',
-  place_of_worship: '/map_icons/place_of_worship.png',
+  cafe: '/map_icons/cafe.png',
+  clothes: '/map_icons/clothes.png',
   college: '/map_icons/college.png',
+  convenience: '/map_icons/convenience.png',
   dentist: '/map_icons/dentist.png',
-  ice_cream: '/map_icons/ice_cream.png',
+  electronics: '/map_icons/electronics.png',
+  fast_food: '/map_icons/fast_food.png',
+  fuel: '/map_icons/fuel.png',
+  hairdresser: '/map_icons/hairdresser.png',
   hotel: '/map_icons/hotel.png',
+  ice_cream: '/map_icons/ice_cream.png',
+  jewelry: '/map_icons/jewelry.png',
+  laundry: '/map_icons/laundry.png',
+  massage: '/map_icons/massage.png',
+  place_of_worship: '/map_icons/place_of_worship.png',
+  post_office: '/map_icons/post_office.png',
+  pub: '/map_icons/pub.png',
+  restaurant: '/map_icons/restaurant.png',
+  shelter: '/map_icons/shelter.png',
   sports: '/map_icons/sports.png',
   supermarket: '/map_icons/supermarket.png',
-  jewelry: '/map_icons/jewelry.png',
-  
+  townhall: '/map_icons/townhall.png',
+  question_mark: '/map_icons/question_mark.png',
 }
 
-const defaultPlaceIconPath = '/map_icons/restaurant.png'
+const defaultPlaceIconPath = '/map_icons/question_mark.png'
 
 const placeIconCache = new Map<string, Icon>()
 
@@ -73,13 +83,13 @@ function MapBridge({ onMapReady }: MapBridgeProps) {
   return null
 }
 
-export function HomeMap({ mapCenter, origin, destination, route, nearbyPlaces, maxMapZoom, onMapReady }: HomeMapProps) {
+export function HomeMap({ mapCenter, origin, destination, route, boundingBoxPlaces, maxMapZoom, onMapReady }: HomeMapProps) {
   return (
     <MapContainer center={mapCenter} zoom={13} minZoom={4} maxZoom={maxMapZoom} className="absolute inset-0 z-0">
       <MapBridge onMapReady={onMapReady} />
       <TileLayer
         attribution='&copy; OpenStreetMap contributors &copy; CARTO'
-        maxNativeZoom={maxMapZoom}
+        maxZoom={maxMapZoom}
         url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
       />
 
@@ -96,7 +106,7 @@ export function HomeMap({ mapCenter, origin, destination, route, nearbyPlaces, m
         />
       )}
 
-      {nearbyPlaces.map((place) => (
+      {boundingBoxPlaces.map((place) => (
         <Marker
           key={place.placeId}
           position={[place.latitude, place.longitude]}
@@ -104,7 +114,7 @@ export function HomeMap({ mapCenter, origin, destination, route, nearbyPlaces, m
         >
           <Tooltip direction="top" offset={[0, -8]}>
             <div className="text-xs font-semibold text-slate-800">{place.name}</div>
-            <div className="text-[11px] text-slate-600">{place.category} - {Math.round(place.distanceInMeters)}m</div>
+            <div className="text-[11px] text-slate-600">{place.category}</div>
           </Tooltip>
         </Marker>
       ))}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Map as LeafletMap } from 'leaflet'
 import { HomeMap } from '../features/home/components/HomeMap'
 import { MapControls } from '../features/home/components/MapControls'
@@ -6,7 +6,8 @@ import { SearchPanel } from '../features/home/components/SearchPanel'
 import { TopRightActions } from '../features/home/components/TopRightActions'
 import { maxMapZoom } from '../features/home/constants/map.constants'
 import { useRoutePlanner } from '../features/home/hooks/useRoutePlanner'
-import { mapService, type NearbyPlace } from '../services'
+import { mapService } from '../services'
+import type { BoundingBoxPlace } from '../services/map/types'
 
 export function HomePage() {
   const {
@@ -26,8 +27,9 @@ export function HomePage() {
   } = useRoutePlanner()
   const [map, setMap] = useState<LeafletMap | null>(null)
   const [currentZoom, setCurrentZoom] = useState(13)
-  const [nearbyPlaces, setNearbyPlaces] = useState<NearbyPlace[]>([])
+  const [boundingBoxPlaces, setBoundingBoxPlaces] = useState<BoundingBoxPlace[]>([])
   const [nearbyError, setNearbyError] = useState('')
+  const boundingBoxDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const zoomIn = () => {
     if (!map || currentZoom >= maxMapZoom) {
@@ -47,7 +49,9 @@ export function HomePage() {
     }
 
     const syncZoom = () => {
-      setCurrentZoom(map.getZoom())
+      const zoom = map.getZoom()
+      console.log('Current zoom:', zoom)
+      setCurrentZoom(zoom)
     }
 
     syncZoom()
@@ -69,25 +73,62 @@ export function HomePage() {
   }, [map, route])
 
   useEffect(() => {
-    const fetchNearbyPlaces = async () => {
+    if (!map) {
+      return
+    }
+
+    const fetchBoundingBoxPlaces = async () => {
+      const bounds = map.getBounds()
+      const northWest = bounds.getNorthWest()
+      const northEast = bounds.getNorthEast()
+      const southWest = bounds.getSouthWest()
+      const southEast = bounds.getSouthEast()
+
+      const latitudes = [northWest.lat, northEast.lat, southWest.lat, southEast.lat]
+      const longitudes = [northWest.lng, northEast.lng, southWest.lng, southEast.lng]
+
       setNearbyError('')
 
       try {
-        const places = await mapService.searchNearbyPlaces({
-          latitude: 10.773,
-          longitude: 106.699,
-          radiusInMeters: 1000,
-          limit: 20,
+        const places = await mapService.boundingBoxSearch({
+          minLatitude: Math.min(...latitudes),
+          maxLatitude: Math.max(...latitudes),
+          minLongitude: Math.min(...longitudes),
+          maxLongitude: Math.max(...longitudes),
+          limit: 200,
         })
 
-        setNearbyPlaces(places)
+        setBoundingBoxPlaces(places)
       } catch {
-        setNearbyError('Khong tai duoc dia diem gan day.')
+        setNearbyError('Khong tai duoc dia diem trong vung.')
       }
     }
 
-    void fetchNearbyPlaces()
-  }, [])
+    const scheduleBoundingBoxFetch = () => {
+      if (boundingBoxDebounceRef.current) {
+        clearTimeout(boundingBoxDebounceRef.current)
+      }
+
+      boundingBoxDebounceRef.current = setTimeout(() => {
+        void fetchBoundingBoxPlaces()
+      }, 300)
+    }
+
+    scheduleBoundingBoxFetch()
+    map.on('move', scheduleBoundingBoxFetch)
+    map.on('zoom', scheduleBoundingBoxFetch)
+
+    return () => {
+      map.off('move', scheduleBoundingBoxFetch)
+      map.off('zoom', scheduleBoundingBoxFetch)
+
+      if (boundingBoxDebounceRef.current) {
+        clearTimeout(boundingBoxDebounceRef.current)
+        boundingBoxDebounceRef.current = null
+      }
+    }
+  }, [map])
+          
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-[#e8efe8] text-slate-900">
@@ -96,7 +137,7 @@ export function HomePage() {
         origin={origin}
         destination={destination}
         route={route}
-        nearbyPlaces={nearbyPlaces}
+        boundingBoxPlaces={boundingBoxPlaces}
         maxMapZoom={maxMapZoom}
         onMapReady={setMap}
       />
@@ -115,7 +156,7 @@ export function HomePage() {
       <TopRightActions />
 
       <div className="pointer-events-none absolute bottom-5 left-5 z-20 rounded-lg bg-white/95 px-3 py-2 text-xs font-medium text-slate-700 shadow">
-        Nearby places: {nearbyPlaces.length}
+        Bounding box places: {boundingBoxPlaces.length}
         {nearbyError ? ` - ${nearbyError}` : ''}
       </div>
 
