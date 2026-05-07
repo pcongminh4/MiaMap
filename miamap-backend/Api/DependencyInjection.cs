@@ -9,6 +9,7 @@ namespace Api;
 public static class DependencyInjection
 {
     public const string CorsPolicyName = "DefaultCorsPolicy";
+    public const string AuthCookieName = "access_token";
 
     public static IServiceCollection AddPresentation(this IServiceCollection services, IConfiguration configuration)
     {
@@ -38,7 +39,8 @@ public static class DependencyInjection
                 policy
                     .WithOrigins(allowedOrigins)
                     .AllowAnyHeader()
-                    .AllowAnyMethod();
+                    .AllowAnyMethod()
+                    .AllowCredentials();
             });
         });
 
@@ -46,6 +48,20 @@ public static class DependencyInjection
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        if (context.Request.Cookies.TryGetValue(AuthCookieName, out var cookieToken) &&
+                            !string.IsNullOrWhiteSpace(cookieToken))
+                        {
+                            context.Token = cookieToken;
+                        }
+
+                        return Task.CompletedTask;
+                    }
+                };
+
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
@@ -76,6 +92,12 @@ public static class DependencyInjection
         services.AddProblemDetails();
 
         services.AddAuthorization();
+        services.AddAntiforgery(options =>
+        {
+            options.HeaderName = "X-CSRF-TOKEN";
+            options.Cookie.Name = "XSRF-TOKEN";
+            options.Cookie.HttpOnly = false;
+        });
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen();
 

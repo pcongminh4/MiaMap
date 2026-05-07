@@ -1,3 +1,4 @@
+using Api.Endpoint.Auth;
 using Application.Abstractions.Authentication;
 using Application.Abstractions.Data;
 using Domain.Users;
@@ -11,9 +12,9 @@ public sealed class LoginCommandHandler(
 	IUserRepository userRepository,
 	IPasswordHasher passwordHasher,
 	IJwtService jwtService)
-	: IRequestHandler<LoginCommand, LoginResponse>
+	: IRequestHandler<LoginCommand, LoginResult>
 {
-	public async Task<LoginResponse> Handle(LoginCommand request, CancellationToken cancellationToken)
+	public async Task<LoginResult> Handle(LoginCommand request, CancellationToken cancellationToken)
 	{
 		var user = await userRepository.GetByEmailAsync(request.Email, cancellationToken);
 
@@ -27,7 +28,7 @@ public sealed class LoginCommandHandler(
 
 		var token = jwtService.GenerateToken(user);
 
-		return new LoginResponse(user.Id, token.AccessToken, token.ExpiresAtUtc);
+		return new LoginResult(user.Id, token.AccessToken, token.ExpiresAtUtc);
 	}
 }
 
