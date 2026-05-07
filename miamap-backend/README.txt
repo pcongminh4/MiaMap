@@ -1,1 +1,1 @@
-dotnet ef migrations add init -p Infrastructure -s Api -o Database/Migrations
+dotnet ef migrations add InitialDb -p Infrastructure -s Api -o Database/Migrations

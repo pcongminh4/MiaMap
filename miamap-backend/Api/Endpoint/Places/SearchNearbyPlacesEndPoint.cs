@@ -1,4 +1,5 @@
 using Api.Endpoint;
+using Application.Abstractions.Data;
 using Application.Places;
 using Application.Places.SearchNearbyPlaces;
 using MediatR;
@@ -25,7 +26,7 @@ public sealed class SearchNearbyPlacesEndPoint : IEndPoint
 			.WithName("SearchNearbyPlaces")
 			.WithSummary("Searches nearby places")
 			.WithDescription("Returns active places within radius sorted by distance then rating.")
-			.Produces<IReadOnlyList<PlaceNearbyResponse>>(StatusCodes.Status200OK)
+			.Produces(StatusCodes.Status200OK)
 			.ProducesProblem(StatusCodes.Status400BadRequest)
 			.ProducesProblem(StatusCodes.Status500InternalServerError);
 	}

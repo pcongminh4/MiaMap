@@ -1,13 +1,12 @@
 using Application.Abstractions.Data;
-using Application.Places;
 using MediatR;
 
 namespace Application.Places.SearchBoundingBoxPlaces;
 
 public sealed class SearchBoundingBoxPlacesQueryHandler(IPlaceRepository placeRepository)
-	: IRequestHandler<SearchBoundingBoxPlacesQuery, IReadOnlyList<BoundingBoxPlaceResponse>>
+	: IRequestHandler<SearchBoundingBoxPlacesQuery, IReadOnlyList<BoudingBoxResult>>
 {
-	public async Task<IReadOnlyList<BoundingBoxPlaceResponse>> Handle(
+	public async Task<IReadOnlyList<BoudingBoxResult>> Handle(
 		SearchBoundingBoxPlacesQuery request,
 		CancellationToken cancellationToken)
 	{
@@ -19,16 +18,6 @@ public sealed class SearchBoundingBoxPlacesQueryHandler(IPlaceRepository placeRe
 			request.Limit,
 			cancellationToken);
 
-		return places
-			.Select(place => new BoundingBoxPlaceResponse(
-				place.PlaceId,
-				place.Name,
-				place.Category,
-				place.Address,
-				place.Latitude,
-				place.Longitude,
-				place.Rating,
-				place.ReviewCount))
-			.ToList();
+		return places;
 	}
 }

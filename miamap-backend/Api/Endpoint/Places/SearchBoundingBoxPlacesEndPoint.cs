@@ -1,5 +1,5 @@
 using Api.Endpoint;
-using Application.Places;
+using Application.Abstractions.Data;
 using Application.Places.SearchBoundingBoxPlaces;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -26,7 +26,7 @@ public sealed class SearchBoundingBoxPlacesEndPoint : IEndPoint
 			.WithName("SearchBoundingBoxPlaces")
 			.WithSummary("Searches places in a bounding box")
 			.WithDescription("Returns active places in the map bounds sorted by rating and review count.")
-			.Produces<IReadOnlyList<BoundingBoxPlaceResponse>>(StatusCodes.Status200OK)
+			.Produces(StatusCodes.Status200OK)
 			.ProducesProblem(StatusCodes.Status400BadRequest)
 			.ProducesProblem(StatusCodes.Status500InternalServerError);
 	}
