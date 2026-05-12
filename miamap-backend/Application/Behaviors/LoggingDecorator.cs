@@ -4,12 +4,12 @@ using Microsoft.Extensions.Logging;
 
 namespace Application.Abstractions.Behaviors;
 
-public sealed class LogginDecorator<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+public sealed class LoggingDecorator<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
 	where TRequest : notnull
 {
-	private readonly ILogger<LogginDecorator<TRequest, TResponse>> _logger;
+	private readonly ILogger<LoggingDecorator<TRequest, TResponse>> _logger;
 
-	public LogginDecorator(ILogger<LogginDecorator<TRequest, TResponse>> logger)
+	public LoggingDecorator(ILogger<LoggingDecorator<TRequest, TResponse>> logger)
 	{
 		_logger = logger;
 	}

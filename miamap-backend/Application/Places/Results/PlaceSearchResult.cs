@@ -1,6 +1,6 @@
-namespace Application.Abstractions.Data;
+namespace Application.Results;
 
-public sealed record BoudingBoxResult(
+public sealed record PlaceSearchResult(
 	int PlaceId,
 	string Name,
 	string Category,
@@ -8,5 +8,4 @@ public sealed record BoudingBoxResult(
 	double Latitude,
 	double Longitude,
 	double Rating,
-	int ReviewCount
-);
+	int ReviewCount);

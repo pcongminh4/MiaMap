@@ -10,18 +10,18 @@ public sealed class LoginEndPoint : IEndPoint
 	{
 		app.MapPost("/auth/login", async (
 			HttpContext httpContext,
-			LoginRequest request,
+			LoginCommand request,
 			ISender sender,
 			IAntiforgery antiforgery,
 			CancellationToken cancellationToken) =>
 			{
 				await antiforgery.ValidateRequestAsync(httpContext);
 
-				var command = new LoginCommand(
-					request.Email,
-					request.Password);
+				// var command = new LoginCommand(
+				// 	request.Email,
+				// 	request.Password);
 
-				var response = await sender.Send(command, cancellationToken);
+				var response = await sender.Send(request, cancellationToken);
 
 				httpContext.Response.Cookies.Append(
 					Api.DependencyInjection.AuthCookieName,
@@ -41,7 +41,7 @@ public sealed class LoginEndPoint : IEndPoint
 			.WithName("LoginUser")
 			.WithSummary("Authenticates a user")
 			.WithDescription("Authenticates user credentials and stores the JWT access token in an HttpOnly cookie. Requires CSRF token.")
-			.Produces(StatusCodes.Status200OK)
+			.Produces<LoginResult>(StatusCodes.Status200OK)
 			.ProducesProblem(StatusCodes.Status400BadRequest)
 			.ProducesProblem(StatusCodes.Status500InternalServerError);
 	}

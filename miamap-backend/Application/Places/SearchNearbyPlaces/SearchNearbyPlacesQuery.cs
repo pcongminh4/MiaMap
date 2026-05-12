@@ -1,4 +1,5 @@
 using Application.Abstractions.Data;
+using Application.Results;
 using MediatR;
 
 namespace Application.Places.SearchNearbyPlaces;

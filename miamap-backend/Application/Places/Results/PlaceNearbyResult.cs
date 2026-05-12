@@ -1,4 +1,4 @@
-namespace Application.Abstractions.Data;
+namespace Application.Results;
 
 public sealed record PlaceNearbyResult(
 	int PlaceId,

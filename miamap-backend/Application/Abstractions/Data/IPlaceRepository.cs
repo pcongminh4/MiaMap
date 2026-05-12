@@ -1,6 +1,6 @@
+using Application.Results;
 using Domain.Places;
 
-namespace Application.Abstractions.Data;
 
 public interface IPlaceRepository
 {
@@ -17,11 +17,16 @@ public interface IPlaceRepository
 		int limit,
 		CancellationToken cancellationToken = default);
 
-	Task<IReadOnlyList<BoudingBoxResult>> BoudingBoxSearchAsync(
+	Task<IReadOnlyList<BoundingBoxResult>> BoudingBoxSearchAsync(
 		double minLatitude,
 		double minLongitude,
 		double maxLatitude,
 		double maxLongitude,
+		int limit,
+		CancellationToken cancellationToken = default);
+
+	Task<IReadOnlyList<SearchByNameOrAddressResult>> SearchByNameOrAddressAsync(
+		string searchText,
 		int limit,
 		CancellationToken cancellationToken = default);
 }

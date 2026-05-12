@@ -1,4 +1,5 @@
 using Application.Abstractions.Data;
+using Application.Results;
 using Domain.Places;
 using Infrastructure.Database;
 using Microsoft.EntityFrameworkCore;
@@ -101,7 +102,7 @@ public sealed class PlaceRepository(ApplicationDbContext dbContext) : IPlaceRepo
 			.ToList();
 	}
 
-	public async Task<IReadOnlyList<BoudingBoxResult>> BoudingBoxSearchAsync(
+	public async Task<IReadOnlyList<BoundingBoxResult>> BoudingBoxSearchAsync(
 		double minLatitude,
 		double minLongitude,
 		double maxLatitude,
@@ -128,7 +129,7 @@ public sealed class PlaceRepository(ApplicationDbContext dbContext) : IPlaceRepo
 			.OrderByDescending(place => place.Rating)
 			.ThenByDescending(place => place.ReviewCount)
 			.Take(limit)
-			.Select(place => new BoudingBoxResult(
+			.Select(place => new BoundingBoxResult(
 				place.Id,
 				place.Name,
 				place.Category,
@@ -141,6 +142,52 @@ public sealed class PlaceRepository(ApplicationDbContext dbContext) : IPlaceRepo
 			.ConfigureAwait(false);
 
 		return results;
+	}
+
+	public async Task<IReadOnlyList<SearchByNameOrAddressResult>> SearchByNameOrAddressAsync(
+	string searchText,
+	int limit,
+	CancellationToken cancellationToken = default)
+	{
+		var searchWords = searchText
+			.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+			.Select(word => word.Trim())
+			.Where(word => !string.IsNullOrWhiteSpace(word))
+			.ToList();
+
+		if (searchWords.Count == 0)
+		{
+			return [];
+		}
+
+		IQueryable<Place> query = dbContext.Places
+			.AsNoTracking()
+			.Where(place => place.IsActive);
+
+		foreach (var word in searchWords)
+		{
+			var pattern = "%" + word + "%";
+
+			query = query.Where(place =>
+				EF.Functions.ILike(place.Name, pattern) ||
+				(place.Address != null &&
+				 EF.Functions.ILike(place.Address, pattern)));
+		}
+
+		var places = await query
+			.Take(limit)
+			.Select(place => new SearchByNameOrAddressResult(
+				place.Id,
+				place.Name,
+				place.Category,
+				place.Address,
+				place.Point.Y,
+				place.Point.X,
+				place.Rating,
+				place.ReviewCount))
+			.ToListAsync(cancellationToken);
+
+		return places;
 	}
 }
 

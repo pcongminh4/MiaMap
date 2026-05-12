@@ -1,9 +1,6 @@
-using Api.Endpoint;
-using Application.Abstractions.Data;
-using Application.Places;
 using Application.Places.SearchNearbyPlaces;
+using Application.Results;
 using MediatR;
-using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Endpoint.Places;
 
@@ -11,22 +8,16 @@ public sealed class SearchNearbyPlacesEndPoint : IEndPoint
 {
 	public void MapEndpoint(IEndpointRouteBuilder app)
 	{
-		app.MapGet("/places/nearby", async ([AsParameters] SearchNearbyPlacesRequest request, ISender sender, CancellationToken cancellationToken) =>
+		app.MapGet("/places/nearby", async ([AsParameters] SearchNearbyPlacesQuery request, ISender sender, CancellationToken cancellationToken) =>
 			{
-				var query = new SearchNearbyPlacesQuery(
-					request.Latitude,
-					request.Longitude,
-					request.RadiusInMeters,
-					request.Limit);
-
-				var response = await sender.Send(query, cancellationToken);
+				var response = await sender.Send(request, cancellationToken);
 				return Results.Ok(response);
 			})
 			.WithTags(Tags.Places)
 			.WithName("SearchNearbyPlaces")
 			.WithSummary("Searches nearby places")
 			.WithDescription("Returns active places within radius sorted by distance then rating.")
-			.Produces(StatusCodes.Status200OK)
+			.Produces<PlaceNearbyResult>(StatusCodes.Status200OK)
 			.ProducesProblem(StatusCodes.Status400BadRequest)
 			.ProducesProblem(StatusCodes.Status500InternalServerError);
 	}

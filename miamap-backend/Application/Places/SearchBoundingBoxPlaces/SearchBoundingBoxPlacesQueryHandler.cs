@@ -1,12 +1,12 @@
-using Application.Abstractions.Data;
+using Application.Results;
 using MediatR;
 
 namespace Application.Places.SearchBoundingBoxPlaces;
 
 public sealed class SearchBoundingBoxPlacesQueryHandler(IPlaceRepository placeRepository)
-	: IRequestHandler<SearchBoundingBoxPlacesQuery, IReadOnlyList<BoudingBoxResult>>
+	: IRequestHandler<SearchBoundingBoxPlacesQuery, IReadOnlyList<BoundingBoxResult>>
 {
-	public async Task<IReadOnlyList<BoudingBoxResult>> Handle(
+	public async Task<IReadOnlyList<BoundingBoxResult>> Handle(
 		SearchBoundingBoxPlacesQuery request,
 		CancellationToken cancellationToken)
 	{
