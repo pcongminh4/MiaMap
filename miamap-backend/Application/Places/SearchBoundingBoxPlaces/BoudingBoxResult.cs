@@ -1,11 +1,11 @@
 namespace Application.Results;
 
-public sealed record SearchByNameOrAddressResult(
+public sealed record BoundingBoxResult(
 	int PlaceId,
 	string Name,
 	string Category,
 	string? Address,
-	double Latitude,
-	double Longitude,
+	GeoPoint Location,
 	double Rating,
-	int ReviewCount);
+	int ReviewCount
+);

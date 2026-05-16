@@ -17,6 +17,10 @@ public sealed class ApplicationDbContext : DbContext, IUnitOfWork
 
 	public DbSet<Place> Places => Set<Place>();
 
+	public DbSet<Node> Nodes => Set<Node>();
+
+	public DbSet<Road> Roads => Set<Road>();
+
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
 		modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);

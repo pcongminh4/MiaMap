@@ -75,8 +75,7 @@ public sealed class PlaceRepository(ApplicationDbContext dbContext) : IPlaceRepo
 				place.Name,
 				place.Category,
 				place.Address,
-				Latitude = place.Point.Y,
-				Longitude = place.Point.X,
+				Location = new GeoPoint(place.Point.Y, place.Point.X),
 				place.Rating,
 				place.ReviewCount,
 				DistanceInMeters = place.Point.Distance(searchPoint)
@@ -94,8 +93,7 @@ public sealed class PlaceRepository(ApplicationDbContext dbContext) : IPlaceRepo
 				place.Name,
 				place.Category,
 				place.Address,
-				place.Latitude,
-				place.Longitude,
+				place.Location,
 				place.Rating,
 				place.ReviewCount,
 				place.DistanceInMeters))
@@ -134,8 +132,7 @@ public sealed class PlaceRepository(ApplicationDbContext dbContext) : IPlaceRepo
 				place.Name,
 				place.Category,
 				place.Address,
-				place.Point.Y,
-				place.Point.X,
+				new GeoPoint(place.Point.Y, place.Point.X),
 				place.Rating,
 				place.ReviewCount))
 			.ToListAsync(cancellationToken)
@@ -181,8 +178,7 @@ public sealed class PlaceRepository(ApplicationDbContext dbContext) : IPlaceRepo
 				place.Name,
 				place.Category,
 				place.Address,
-				place.Point.Y,
-				place.Point.X,
+				new GeoPoint(place.Point.Y, place.Point.X),
 				place.Rating,
 				place.ReviewCount))
 			.ToListAsync(cancellationToken);

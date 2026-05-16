@@ -5,8 +5,7 @@ public sealed record PlaceNearbyResult(
 	string Name,
 	string Category,
 	string? Address,
-	double Latitude,
-	double Longitude,
+	GeoPoint Location,
 	double Rating,
 	int ReviewCount,
 	double DistanceInMeters);

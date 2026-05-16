@@ -1,11 +1,16 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Application.Abstractions.Data;
 using Application.Results;
+using Domain.Places;
+using Infrastructure.Database;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using NetTopologySuite.Geometries;
 
 namespace Infrastructure.Places.Importing;
 
@@ -94,27 +99,17 @@ public sealed class OpenStreetMapImportBackgroundService(
 
 	private async Task ImportAreaAsync(OpenStreetMapImportArea area, CancellationToken cancellationToken)
 	{
-		var query = BuildOverpassQuery(area);
-		var client = httpClientFactory.CreateClient("openstreetmap-import");
+		await ImportPlacesAsync(area, cancellationToken);
+		await ImportRoadsAsync(area, cancellationToken);
+		await LinkPlacesToNearestNodesAsync(area, cancellationToken);
+	}
 
-		using var request = new HttpRequestMessage(HttpMethod.Post, _options.BaseUrl)
-		{
-			Content = new FormUrlEncodedContent(
-			[
-				new KeyValuePair<string, string>("data", query)
-			])
-		};
-
-		request.Headers.UserAgent.ParseAdd("miamap-backend-importer/1.0");
-
-		using var response = await client.SendAsync(request, cancellationToken);
-		response.EnsureSuccessStatusCode();
-
-		await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-		var payload = await JsonSerializer.DeserializeAsync<OverpassResponse>(stream, JsonOptions, cancellationToken)
-			?? new OverpassResponse();
+	private async Task ImportPlacesAsync(OpenStreetMapImportArea area, CancellationToken cancellationToken)
+	{
+		var payload = await ExecuteOverpassQueryAsync(BuildPlaceOverpassQuery(area), cancellationToken);
 
 		var records = payload.Elements
+			.Where(element => element.Type == "node")
 			.Where(element => element.Latitude.HasValue && element.Longitude.HasValue)
 			.Where(element => !string.IsNullOrWhiteSpace(element.Tags.Name))
 			.Select(ToUpsertRequest)
@@ -139,7 +134,6 @@ public sealed class OpenStreetMapImportBackgroundService(
 			foreach (var record in batch)
 			{
 				var result = await placeRepository.UpsertExternalAsync(record, cancellationToken);
-
 				if (result.Created)
 				{
 					created++;
@@ -154,17 +148,120 @@ public sealed class OpenStreetMapImportBackgroundService(
 		}
 
 		logger.LogInformation(
-			"Imported OpenStreetMap area {AreaName}: total={Total}, created={Created}, updated={Updated}.",
+			"Imported OpenStreetMap places for area {AreaName}: total={Total}, created={Created}, updated={Updated}.",
 			area.Name,
 			records.Count,
 			created,
 			updated);
 	}
 
-	private string BuildOverpassQuery(OpenStreetMapImportArea area)
+	private async Task ImportRoadsAsync(OpenStreetMapImportArea area, CancellationToken cancellationToken)
+	{
+		var payload = await ExecuteOverpassQueryAsync(BuildRoadOverpassQuery(area), cancellationToken);
+
+		var nodeElementsById = payload.Elements
+			.Where(element => element.Type == "node")
+			.Where(element => element.Latitude.HasValue && element.Longitude.HasValue)
+			.ToDictionary(element => element.Id);
+
+		var roadElements = payload.Elements
+			.Where(element => element.Type == "way")
+			.Where(element => !string.IsNullOrWhiteSpace(element.Tags.Highway))
+			.Where(element => element.Nodes.Count >= 2)
+			.ToList();
+
+		if (roadElements.Count == 0)
+		{
+			logger.LogInformation("No OpenStreetMap roads found for area {AreaName}.", area.Name);
+			return;
+		}
+
+		var batchSize = Math.Max(1, _options.BatchSize);
+		var createdNodes = 0;
+		var updatedNodes = 0;
+		var createdRoads = 0;
+		var updatedRoads = 0;
+		var nodeCache = new Dictionary<string, Node>(StringComparer.OrdinalIgnoreCase);
+		var roadCache = new Dictionary<string, Road>(StringComparer.OrdinalIgnoreCase);
+
+		using var scope = scopeFactory.CreateScope();
+		var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+		foreach (var batch in roadElements.Chunk(batchSize))
+		{
+			foreach (var roadElement in batch)
+			{
+				if (!TryBuildRoadGeometry(roadElement, nodeElementsById, out var geometry, out var pathNodes))
+				{
+					continue;
+				}
+
+				var startNodeResult = await UpsertNodeAsync(dbContext, nodeCache, pathNodes.First(), cancellationToken);
+				createdNodes += startNodeResult.Created ? 1 : 0;
+				updatedNodes += startNodeResult.Created ? 0 : 1;
+
+				var endNodeResult = await UpsertNodeAsync(dbContext, nodeCache, pathNodes.Last(), cancellationToken);
+				createdNodes += endNodeResult.Created ? 1 : 0;
+				updatedNodes += endNodeResult.Created ? 0 : 1;
+
+				await dbContext.SaveChangesAsync(cancellationToken);
+
+				var roadResult = await UpsertRoadAsync(
+					dbContext,
+					roadCache,
+					roadElement,
+					geometry,
+					CalculateLengthMeters(pathNodes),
+					startNodeResult.Node.Id,
+					endNodeResult.Node.Id,
+					IsTruthy(roadElement.Tags.Oneway),
+					roadElement.Tags.Name ?? roadElement.Tags.Reference,
+					roadElement.Tags.Highway,
+					ParseSpeedLimit(roadElement.Tags.Maxspeed),
+					cancellationToken);
+				createdRoads += roadResult.Created ? 1 : 0;
+				updatedRoads += roadResult.Created ? 0 : 1;
+			}
+
+			await dbContext.SaveChangesAsync(cancellationToken);
+		}
+
+		logger.LogInformation(
+			"Imported OpenStreetMap roads for area {AreaName}: total={Total}, nodesCreated={NodesCreated}, nodesUpdated={NodesUpdated}, roadsCreated={RoadsCreated}, roadsUpdated={RoadsUpdated}.",
+			area.Name,
+			roadElements.Count,
+			createdNodes,
+			updatedNodes,
+			createdRoads,
+			updatedRoads);
+	}
+
+	private async Task<OverpassResponse> ExecuteOverpassQueryAsync(string query, CancellationToken cancellationToken)
+	{
+		var client = httpClientFactory.CreateClient("openstreetmap-import");
+
+		using var request = new HttpRequestMessage(HttpMethod.Post, _options.BaseUrl)
+		{
+			Content = new FormUrlEncodedContent(
+			[
+				new KeyValuePair<string, string>("data", query)
+			])
+		};
+
+		request.Headers.UserAgent.ParseAdd("miamap-backend-importer/1.0");
+
+		using var response = await client.SendAsync(request, cancellationToken);
+		response.EnsureSuccessStatusCode();
+
+		await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+		return await JsonSerializer.DeserializeAsync<OverpassResponse>(stream, JsonOptions, cancellationToken)
+			?? new OverpassResponse();
+	}
+
+	private string BuildPlaceOverpassQuery(OpenStreetMapImportArea area)
 	{
 		var limit = Math.Max(1, _options.MaxPlacesPerArea);
-		var rawQuery =
+		return
 			"[out:json][timeout:25];" +
 			"(" +
 			$"node[\"name\"][\"amenity\"]({area.South},{area.West},{area.North},{area.East});" +
@@ -172,8 +269,16 @@ public sealed class OpenStreetMapImportBackgroundService(
 			$"node[\"name\"][\"tourism\"]({area.South},{area.West},{area.North},{area.East});" +
 			")" +
 			$";out body {limit};";
+	}
 
-		return rawQuery;
+	private string BuildRoadOverpassQuery(OpenStreetMapImportArea area)
+	{
+		return
+			"[out:json][timeout:25];" +
+			"(" +
+			$"way[\"highway\"]({area.South},{area.West},{area.North},{area.East});" +
+			")" +
+			";out body;>;out skel qt;";
 	}
 
 	private static ExternalPlaceUpsertRequest ToUpsertRequest(OverpassElement element)
@@ -191,6 +296,198 @@ public sealed class OpenStreetMapImportBackgroundService(
 			Latitude: element.Latitude ?? 0,
 			Longitude: element.Longitude ?? 0,
 			Tags: tagsJson);
+	}
+
+	private static async Task<(Node Node, bool Created)> UpsertNodeAsync(
+		ApplicationDbContext dbContext,
+		Dictionary<string, Node> nodeCache,
+		OverpassElement element,
+		CancellationToken cancellationToken)
+	{
+		var externalId = element.Id.ToString();
+		if (nodeCache.TryGetValue(externalId, out var cachedNode))
+		{
+			return (cachedNode, false);
+		}
+
+		var existingNode = await dbContext.Nodes.SingleOrDefaultAsync(
+			node => node.Source == "osm" && node.ExternalId == externalId,
+			cancellationToken);
+
+		if (existingNode is null)
+		{
+			var createdNode = Node.CreateFromExternal(
+				"osm",
+				externalId,
+				element.Latitude ?? 0,
+				element.Longitude ?? 0,
+				element.Tags.Name,
+				DateTime.UtcNow);
+
+			await dbContext.Nodes.AddAsync(createdNode, cancellationToken);
+			nodeCache[externalId] = createdNode;
+			return (createdNode, true);
+		}
+
+		existingNode.UpdateFromExternal(
+			element.Latitude ?? 0,
+			element.Longitude ?? 0,
+			element.Tags.Name);
+		nodeCache[externalId] = existingNode;
+		return (existingNode, false);
+	}
+
+	private static async Task<(Road Road, bool Created)> UpsertRoadAsync(
+		ApplicationDbContext dbContext,
+		Dictionary<string, Road> roadCache,
+		OverpassElement element,
+		LineString geometry,
+		double lengthMeters,
+		int startNodeId,
+		int endNodeId,
+		bool isOneWay,
+		string? roadName,
+		string? roadType,
+		int maxSpeedKmh,
+		CancellationToken cancellationToken)
+	{
+		var externalId = element.Id.ToString();
+		if (roadCache.TryGetValue(externalId, out var cachedRoad))
+		{
+			return (cachedRoad, false);
+		}
+
+		var existingRoad = await dbContext.Roads.SingleOrDefaultAsync(
+			road => road.Source == "osm" && road.ExternalId == externalId,
+			cancellationToken);
+
+		if (existingRoad is null)
+		{
+			var createdRoad = Road.CreateFromExternal(
+				"osm",
+				externalId,
+				geometry,
+				lengthMeters,
+				startNodeId,
+				endNodeId,
+				isOneWay,
+				roadName,
+				roadType,
+				maxSpeedKmh);
+
+			await dbContext.Roads.AddAsync(createdRoad, cancellationToken);
+			roadCache[externalId] = createdRoad;
+			return (createdRoad, true);
+		}
+
+		existingRoad.UpdateFromExternal(
+			geometry,
+			lengthMeters,
+			startNodeId,
+			endNodeId,
+			isOneWay,
+			roadName,
+			roadType,
+			maxSpeedKmh);
+		roadCache[externalId] = existingRoad;
+		return (existingRoad, false);
+	}
+
+	private static bool TryBuildRoadGeometry(
+		OverpassElement roadElement,
+		IReadOnlyDictionary<long, OverpassElement> nodeElementsById,
+		out LineString geometry,
+		out List<OverpassElement> pathNodes)
+	{
+		pathNodes = [];
+		geometry = null!;
+
+		var resolvedNodes = new List<OverpassElement>();
+		foreach (var nodeId in roadElement.Nodes)
+		{
+			if (!nodeElementsById.TryGetValue(nodeId, out var nodeElement))
+			{
+				return false;
+			}
+
+			resolvedNodes.Add(nodeElement);
+		}
+
+		if (resolvedNodes.Count < 2)
+		{
+			return false;
+		}
+
+		var coordinates = resolvedNodes
+			.Select(node => new Coordinate(node.Longitude!.Value, node.Latitude!.Value))
+			.ToArray();
+
+		geometry = new LineString(coordinates) { SRID = 4326 };
+		pathNodes = resolvedNodes;
+		return true;
+	}
+
+	private static double CalculateLengthMeters(IReadOnlyList<OverpassElement> pathNodes)
+	{
+		double total = 0;
+
+		for (var index = 1; index < pathNodes.Count; index++)
+		{
+			total += HaversineDistanceMeters(
+				pathNodes[index - 1].Latitude!.Value,
+				pathNodes[index - 1].Longitude!.Value,
+				pathNodes[index].Latitude!.Value,
+				pathNodes[index].Longitude!.Value);
+		}
+
+		return total;
+	}
+
+	private static double HaversineDistanceMeters(
+		double latitude1,
+		double longitude1,
+		double latitude2,
+		double longitude2)
+	{
+		const double radiusMeters = 6_371_000;
+		var latitudeDelta = ToRadians(latitude2 - latitude1);
+		var longitudeDelta = ToRadians(longitude2 - longitude1);
+		var a = Math.Sin(latitudeDelta / 2) * Math.Sin(latitudeDelta / 2) +
+			Math.Cos(ToRadians(latitude1)) * Math.Cos(ToRadians(latitude2)) *
+			Math.Sin(longitudeDelta / 2) * Math.Sin(longitudeDelta / 2);
+		var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+		return radiusMeters * c;
+	}
+
+	private static double ToRadians(double degrees)
+	{
+		return degrees * Math.PI / 180;
+	}
+
+	private static int ParseSpeedLimit(string? maxSpeed)
+	{
+		if (string.IsNullOrWhiteSpace(maxSpeed))
+		{
+			return 50;
+		}
+
+		var digits = new string(maxSpeed.Where(char.IsDigit).ToArray());
+		if (int.TryParse(digits, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
+		{
+			return parsed;
+		}
+
+		return 50;
+	}
+
+	private static bool IsTruthy(string? value)
+	{
+		if (string.IsNullOrWhiteSpace(value))
+		{
+			return false;
+		}
+
+		return value.Trim().ToLowerInvariant() is "yes" or "true" or "1" or "y" or "t";
 	}
 
 	private static string ResolveCategory(OverpassTags tags)
@@ -232,6 +529,61 @@ public sealed class OpenStreetMapImportBackgroundService(
 		return parts.Length == 0 ? null : string.Join(", ", parts);
 	}
 
+	private async Task LinkPlacesToNearestNodesAsync(OpenStreetMapImportArea area, CancellationToken cancellationToken)
+	{
+		using var scope = scopeFactory.CreateScope();
+		var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+		// Get all places in the area that don't have a nearest node yet
+		var places = await dbContext.Places
+			.Where(p => p.IsActive && p.NearestNodeId == null)
+			.ToListAsync(cancellationToken);
+
+		if (places.Count == 0)
+		{
+			return;
+		}
+
+		// Get all nodes in the area
+		var nodes = await dbContext.Nodes
+			.Where(n => n.IsActive)
+			.ToListAsync(cancellationToken);
+
+		if (nodes.Count == 0)
+		{
+			logger.LogWarning("No nodes found in area {AreaName} to link places.", area.Name);
+			return;
+		}
+
+		var linkedCount = 0;
+
+		foreach (var place in places)
+		{
+			// Find the nearest node using distance calculation
+			var nearestNode = nodes.MinBy(node => 
+				HaversineDistanceMeters(
+					place.Point.Y,
+					place.Point.X,
+					node.Location.Y,
+					node.Location.X));
+
+			if (nearestNode != null)
+			{
+				place.LinkNearestNode(nearestNode.Id);
+				linkedCount++;
+			}
+		}
+
+		if (linkedCount > 0)
+		{
+			await dbContext.SaveChangesAsync(cancellationToken);
+			logger.LogInformation(
+				"Linked {LinkedCount} places to nearest nodes in area {AreaName}.",
+				linkedCount,
+				area.Name);
+		}
+	}
+
 	private sealed class OverpassResponse
 	{
 		[JsonPropertyName("elements")]
@@ -252,6 +604,9 @@ public sealed class OpenStreetMapImportBackgroundService(
 		[JsonPropertyName("lon")]
 		public double? Longitude { get; init; }
 
+		[JsonPropertyName("nodes")]
+		public List<long> Nodes { get; init; } = [];
+
 		[JsonPropertyName("tags")]
 		public OverpassTags Tags { get; init; } = new();
 	}
@@ -261,6 +616,9 @@ public sealed class OpenStreetMapImportBackgroundService(
 		[JsonPropertyName("name")]
 		public string? Name { get; init; }
 
+		[JsonPropertyName("ref")]
+		public string? Reference { get; init; }
+
 		[JsonPropertyName("amenity")]
 		public string? Amenity { get; init; }
 
@@ -269,6 +627,15 @@ public sealed class OpenStreetMapImportBackgroundService(
 
 		[JsonPropertyName("tourism")]
 		public string? Tourism { get; init; }
+
+		[JsonPropertyName("highway")]
+		public string? Highway { get; init; }
+
+		[JsonPropertyName("oneway")]
+		public string? Oneway { get; init; }
+
+		[JsonPropertyName("maxspeed")]
+		public string? Maxspeed { get; init; }
 
 		[JsonPropertyName("leisure")]
 		public string? Leisure { get; init; }
@@ -290,9 +657,13 @@ public sealed class OpenStreetMapImportBackgroundService(
 			var pairs = new Dictionary<string, string?>
 			{
 				["name"] = Name,
+				["ref"] = Reference,
 				["amenity"] = Amenity,
 				["shop"] = Shop,
 				["tourism"] = Tourism,
+				["highway"] = Highway,
+				["oneway"] = Oneway,
+				["maxspeed"] = Maxspeed,
 				["leisure"] = Leisure,
 				["addr:full"] = FormattedAddress,
 				["addr:housenumber"] = HouseNumber,
@@ -306,4 +677,3 @@ public sealed class OpenStreetMapImportBackgroundService(
 		}
 	}
 }
-

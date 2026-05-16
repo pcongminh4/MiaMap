@@ -3,6 +3,7 @@ using System;
 using Infrastructure.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NetTopologySuite.Geometries;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Infrastructure.Database.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260512141015_AddExternalIdsToNodesAndRoads")]
+    partial class AddExternalIdsToNodesAndRoads
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -121,10 +124,6 @@ namespace Infrastructure.Database.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
-                    b.Property<int?>("NearestNodeId")
-                        .HasColumnType("integer")
-                        .HasColumnName("nearest_node_id");
-
                     b.Property<Point>("Point")
                         .IsRequired()
                         .HasColumnType("geometry(point, 4326)")
@@ -158,8 +157,6 @@ namespace Infrastructure.Database.Migrations
 
                     b.HasIndex("IsActive")
                         .HasDatabaseName("ix_places_is_active");
-
-                    b.HasIndex("NearestNodeId");
 
                     b.HasIndex("Point")
                         .HasDatabaseName("ix_places_point");
@@ -301,16 +298,6 @@ namespace Infrastructure.Database.Migrations
                         .IsUnique();
 
                     b.ToTable("users", (string)null);
-                });
-
-            modelBuilder.Entity("Domain.Places.Place", b =>
-                {
-                    b.HasOne("Domain.Places.Node", "NearestNode")
-                        .WithMany()
-                        .HasForeignKey("NearestNodeId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("NearestNode");
                 });
 
             modelBuilder.Entity("Domain.Places.Road", b =>

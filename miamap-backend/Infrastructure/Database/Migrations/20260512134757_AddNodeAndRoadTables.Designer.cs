@@ -3,6 +3,7 @@ using System;
 using Infrastructure.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NetTopologySuite.Geometries;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Infrastructure.Database.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260512134757_AddNodeAndRoadTables")]
+    partial class AddNodeAndRoadTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -37,11 +40,6 @@ namespace Infrastructure.Database.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at_utc");
 
-                    b.Property<string>("ExternalId")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("external_id");
-
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active");
@@ -56,19 +54,7 @@ namespace Infrastructure.Database.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("name");
 
-                    b.Property<string>("Source")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("source");
-
-                    b.Property<DateTime?>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at_utc");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("Source", "ExternalId")
-                        .IsUnique();
 
                     b.ToTable("nodes", (string)null);
                 });
@@ -121,10 +107,6 @@ namespace Infrastructure.Database.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
-                    b.Property<int?>("NearestNodeId")
-                        .HasColumnType("integer")
-                        .HasColumnName("nearest_node_id");
-
                     b.Property<Point>("Point")
                         .IsRequired()
                         .HasColumnType("geometry(point, 4326)")
@@ -159,8 +141,6 @@ namespace Infrastructure.Database.Migrations
                     b.HasIndex("IsActive")
                         .HasDatabaseName("ix_places_is_active");
 
-                    b.HasIndex("NearestNodeId");
-
                     b.HasIndex("Point")
                         .HasDatabaseName("ix_places_point");
 
@@ -188,11 +168,6 @@ namespace Infrastructure.Database.Migrations
                     b.Property<int>("EndNodeId")
                         .HasColumnType("integer")
                         .HasColumnName("end_node_id");
-
-                    b.Property<string>("ExternalId")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("external_id");
 
                     b.Property<LineString>("Geometry")
                         .IsRequired()
@@ -225,18 +200,9 @@ namespace Infrastructure.Database.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("road_type");
 
-                    b.Property<string>("Source")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("source");
-
                     b.Property<int>("StartNodeId")
                         .HasColumnType("integer")
                         .HasColumnName("start_node_id");
-
-                    b.Property<DateTime?>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at_utc");
 
                     b.Property<double>("Weight")
                         .HasColumnType("double precision")
@@ -247,9 +213,6 @@ namespace Infrastructure.Database.Migrations
                     b.HasIndex("EndNodeId");
 
                     b.HasIndex("StartNodeId");
-
-                    b.HasIndex("Source", "ExternalId")
-                        .IsUnique();
 
                     b.ToTable("roads", (string)null);
                 });
@@ -301,16 +264,6 @@ namespace Infrastructure.Database.Migrations
                         .IsUnique();
 
                     b.ToTable("users", (string)null);
-                });
-
-            modelBuilder.Entity("Domain.Places.Place", b =>
-                {
-                    b.HasOne("Domain.Places.Node", "NearestNode")
-                        .WithMany()
-                        .HasForeignKey("NearestNodeId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("NearestNode");
                 });
 
             modelBuilder.Entity("Domain.Places.Road", b =>

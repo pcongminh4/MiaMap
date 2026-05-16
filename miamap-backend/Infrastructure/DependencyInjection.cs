@@ -28,6 +28,7 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork>(serviceProvider => serviceProvider.GetRequiredService<ApplicationDbContext>());
         services.AddScoped<IPlaceRepository, PlaceRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IRoutingRepository, RoutingRepository>();
         services.AddScoped<IPasswordHasher, PasswordHasher>();
         services.AddScoped<IJwtService, TokenProvider>();
 

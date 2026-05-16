@@ -74,6 +74,15 @@ public sealed class PlaceConfiguration : IEntityTypeConfiguration<Place>
 		builder.Property(place => place.UpdatedAtUtc)
 			.HasColumnName("updated_at_utc");
 
+		builder.Property(place => place.NearestNodeId)
+			.HasColumnName("nearest_node_id");
+
+		builder.HasOne(place => place.NearestNode)
+			.WithMany()
+			.HasForeignKey(place => place.NearestNodeId)
+			.IsRequired(false)
+			.OnDelete(DeleteBehavior.SetNull);
+
 		builder.HasIndex(place => place.Category)
 			.HasDatabaseName("ix_places_category");
 

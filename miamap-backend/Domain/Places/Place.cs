@@ -57,6 +57,10 @@ public sealed class Place
 
 	public DateTime? UpdatedAtUtc { get; private set; }
 
+	public int? NearestNodeId { get; private set; }
+
+	public Node? NearestNode { get; private set; }
+
 	public static Place CreateFromExternal(
 		string source,
 		string externalId,
@@ -148,6 +152,12 @@ public sealed class Place
 		ExternalType = externalType.Trim().ToLowerInvariant();
 		Tags = string.IsNullOrWhiteSpace(tags) ? null : tags;
 		LastSyncedAtUtc = syncedAtUtc;
+		UpdatedAtUtc = DateTime.UtcNow;
+	}
+
+	public void LinkNearestNode(int? nodeId)
+	{
+		NearestNodeId = nodeId;
 		UpdatedAtUtc = DateTime.UtcNow;
 	}
 

@@ -1,11 +1,10 @@
 namespace Application.Results;
 
-public sealed record PlaceSearchResult(
+public sealed record SearchByNameOrAddressResult(
 	int PlaceId,
 	string Name,
-	string Category,
+	string Category,	
 	string? Address,
-	double Latitude,
-	double Longitude,
+	GeoPoint Location,
 	double Rating,
 	int ReviewCount);
