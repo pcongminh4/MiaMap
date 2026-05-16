@@ -1,3 +1,5 @@
+import type { BackendSearchByNameOrAddressResponse } from '../../../services/map/dto/map.dto.response'
+
 type SearchType = 'origin' | 'destination'
 
 type SearchPanelProps = {
@@ -5,10 +7,79 @@ type SearchPanelProps = {
   destinationText: string
   onOriginTextChange: (value: string) => void
   onDestinationTextChange: (value: string) => void
-  onSearch: (type: SearchType) => void | Promise<void>
   onSwap: () => void | Promise<void>
   isLoading: boolean
   errorMessage: string
+  originSuggestions: BackendSearchByNameOrAddressResponse[]
+  destinationSuggestions: BackendSearchByNameOrAddressResponse[]
+  onSelectPlace: (type: SearchType, place: BackendSearchByNameOrAddressResponse) => void
+  onClearSuggestions: (type: SearchType) => void
+}
+
+function SearchInput({
+  value,
+  onChange,
+  onSelect,
+  onClear,
+  suggestions,
+  placeholder,
+  inputId,
+}: {
+  value: string
+  onChange: (value: string) => void
+  onSelect: (place: BackendSearchByNameOrAddressResponse) => void
+  onClear: () => void
+  suggestions: BackendSearchByNameOrAddressResponse[]
+  placeholder: string
+  inputId: string
+}) {
+  return (
+    <div className="relative">
+      <div className="flex items-center gap-2 rounded-xl bg-slate-200/80 px-2.5 py-2 md:py-2.5">
+        <input
+          id={inputId}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="w-full bg-transparent text-sm font-semibold text-slate-700 outline-none placeholder:text-slate-500 md:text-base"
+          placeholder={placeholder}
+        />
+        {value && (
+          <button
+            type="button"
+            className="ml-auto text-slate-500"
+            aria-label="Clear"
+            onClick={onClear}
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4 md:h-5 md:w-5" fill="none" stroke="currentColor" strokeWidth="2.4">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        )}
+      </div>
+
+      {suggestions.length > 0 && (
+        <ul className="absolute z-30 mt-1 w-full rounded-xl bg-white shadow-lg">
+          {suggestions.map((place) => (
+            <li key={place.placeId}>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-100"
+                onClick={() => onSelect(place)}
+              >
+                <span className="grid h-5 w-5 place-items-center rounded-full bg-slate-200 text-xs text-slate-600">
+                  {place.category.charAt(0).toUpperCase()}
+                </span>
+                <span className="flex-1 truncate font-medium text-slate-800">{place.name}</span>
+                {place.rating > 0 && (
+                  <span className="text-xs text-yellow-500">★ {place.rating.toFixed(1)}</span>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
 }
 
 export function SearchPanel({
@@ -16,10 +87,13 @@ export function SearchPanel({
   destinationText,
   onOriginTextChange,
   onDestinationTextChange,
-  onSearch,
   onSwap,
   isLoading,
   errorMessage,
+  originSuggestions,
+  destinationSuggestions,
+  onSelectPlace,
+  onClearSuggestions,
 }: SearchPanelProps) {
   return (
     <aside className="absolute left-3 top-3 z-20 w-[400px] max-w-[calc(100%-24px)] rounded-2xl bg-white/96 p-2.5 shadow-[0_14px_40px_rgba(0,0,0,0.2)] md:left-5 md:top-5 md:max-w-[calc(100%-40px)] md:p-3.5">
@@ -43,45 +117,31 @@ export function SearchPanel({
         </div>
 
         <div className="min-w-0 flex-1 space-y-2.5">
-          <div className="flex items-center gap-2 rounded-xl bg-slate-200/80 px-2.5 py-2 md:py-2.5">
-            <input
-              value={originText}
-              onChange={(event) => onOriginTextChange(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  void onSearch('origin')
-                }
-              }}
-              className="w-full bg-transparent text-sm font-semibold text-slate-700 outline-none placeholder:text-slate-500 md:text-base"
-              placeholder="Chọn điểm xuất phát"
-            />
-            <button type="button" className="ml-auto text-slate-500" aria-label="Search departure" onClick={() => void onSearch('origin')}>
-              <svg viewBox="0 0 24 24" className="h-4 w-4 md:h-5 md:w-5" fill="none" stroke="currentColor" strokeWidth="2.4">
-                <circle cx="11" cy="11" r="6" />
-                <path d="M20 20l-4.1-4.1" />
-              </svg>
-            </button>
-          </div>
+          <SearchInput
+            value={originText}
+            onChange={onOriginTextChange}
+            onSelect={(place) => onSelectPlace('origin', place)}
+            onClear={() => {
+              onOriginTextChange('')
+              onClearSuggestions('origin')
+            }}
+            suggestions={originSuggestions}
+            placeholder="Chọn điểm xuất phát"
+            inputId="origin-input"
+          />
 
-          <div className="flex items-center gap-2 rounded-xl bg-slate-200/80 px-2.5 py-2 md:py-2.5">
-            <input
-              value={destinationText}
-              onChange={(event) => onDestinationTextChange(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  void onSearch('destination')
-                }
-              }}
-              className="w-full bg-transparent text-sm font-semibold text-slate-700 outline-none placeholder:text-slate-500 md:text-base"
-              placeholder="Chọn điểm đến"
-            />
-            <button type="button" className="ml-auto text-slate-500" aria-label="Search destination" onClick={() => void onSearch('destination')}>
-              <svg viewBox="0 0 24 24" className="h-4 w-4 md:h-5 md:w-5" fill="none" stroke="currentColor" strokeWidth="2.4">
-                <circle cx="11" cy="11" r="6" />
-                <path d="M20 20l-4.1-4.1" />
-              </svg>
-            </button>
-          </div>
+          <SearchInput
+            value={destinationText}
+            onChange={onDestinationTextChange}
+            onSelect={(place) => onSelectPlace('destination', place)}
+            onClear={() => {
+              onDestinationTextChange('')
+              onClearSuggestions('destination')
+            }}
+            suggestions={destinationSuggestions}
+            placeholder="Chọn điểm đến"
+            inputId="destination-input"
+          />
         </div>
 
         <button type="button" className="self-center rounded-full p-1 text-slate-600 transition hover:bg-slate-100" aria-label="Swap direction" onClick={() => void onSwap()}>

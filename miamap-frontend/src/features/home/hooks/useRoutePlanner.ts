@@ -1,18 +1,25 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { LatLngTuple, Map as LeafletMap } from 'leaflet'
 import { defaultDestination, defaultOrigin } from '../constants/map.constants'
-import { mapService } from '../../../services'
+import { mapService } from '../../../services/map'
+import type { BackendSearchByNameOrAddressResponse } from '../../../services/map/dto/map.dto.response'
 
 type SearchType = 'origin' | 'destination'
 
 export function useRoutePlanner() {
-  const [originText, setOriginText] = useState('Cho Ben Thanh, Ho Chi Minh')
-  const [destinationText, setDestinationText] = useState('Landmark 81, Ho Chi Minh')
+  const [originText, setOriginText] = useState('')
+  const [destinationText, setDestinationText] = useState('')
   const [origin, setOrigin] = useState<LatLngTuple>(defaultOrigin)
   const [destination, setDestination] = useState<LatLngTuple>(defaultDestination)
   const [route, setRoute] = useState<LatLngTuple[]>([defaultOrigin, defaultDestination])
   const [isLoading, setIsLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+
+  const [originSuggestions, setOriginSuggestions] = useState<BackendSearchByNameOrAddressResponse[]>([])
+  const [destinationSuggestions, setDestinationSuggestions] = useState<BackendSearchByNameOrAddressResponse[]>([])
+
+  const originDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const destinationDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const mapCenter = useMemo<LatLngTuple>(() => {
     return [(origin[0] + destination[0]) / 2, (origin[1] + destination[1]) / 2]
@@ -33,29 +40,81 @@ export function useRoutePlanner() {
     }
   }, [])
 
-  const searchAndSetPoint = useCallback(
-    async (type: SearchType) => {
-      const query = type === 'origin' ? originText : destinationText
+  const searchPlaces = useCallback(async (type: SearchType, query: string) => {
+    if (!query.trim()) {
+      if (type === 'origin') {
+        setOriginSuggestions([])
+      } else {
+        setDestinationSuggestions([])
+      }
+      return
+    }
 
-      try {
-        const point = await mapService.geocodeLocation(query)
-        if (!point) {
-          setErrorMessage('Khong tim thay dia diem. Thu doi tu khoa khac.')
-          return
-        }
+    try {
+      const results = await mapService.searchByNameOrAddress({ searchText: query, limit: 6 })
+      if (type === 'origin') {
+        setOriginSuggestions(results)
+      } else {
+        setDestinationSuggestions(results)
+      }
+    } catch {
+      if (type === 'origin') {
+        setOriginSuggestions([])
+      } else {
+        setDestinationSuggestions([])
+      }
+    }
+  }, [])
 
-        if (type === 'origin') {
-          setOrigin(point)
-          await renderRoute(point, destination)
-        } else {
-          setDestination(point)
-          await renderRoute(origin, point)
-        }
-      } catch {
-        setErrorMessage('Khong the tim kiem dia diem luc nay.')
+  const handleOriginTextChange = useCallback(
+    (value: string) => {
+      setOriginText(value)
+      setDestinationSuggestions([])
+
+      if (originDebounceRef.current) {
+        clearTimeout(originDebounceRef.current)
+      }
+
+      originDebounceRef.current = setTimeout(() => {
+        void searchPlaces('origin', value)
+      }, 300)
+    },
+    [searchPlaces],
+  )
+
+  const handleDestinationTextChange = useCallback(
+    (value: string) => {
+      setDestinationText(value)
+      setOriginSuggestions([])
+
+      if (destinationDebounceRef.current) {
+        clearTimeout(destinationDebounceRef.current)
+      }
+
+      destinationDebounceRef.current = setTimeout(() => {
+        void searchPlaces('destination', value)
+      }, 300)
+    },
+    [searchPlaces],
+  )
+
+  const selectPlace = useCallback(
+    async (type: SearchType, place: BackendSearchByNameOrAddressResponse) => {
+      const coords: LatLngTuple = [place.location.latitude, place.location.longitude]
+
+      if (type === 'origin') {
+        setOriginText(place.name)
+        setOrigin(coords)
+        setOriginSuggestions([])
+        await renderRoute(coords, destination)
+      } else {
+        setDestinationText(place.name)
+        setDestination(coords)
+        setDestinationSuggestions([])
+        await renderRoute(origin, coords)
       }
     },
-    [destination, destinationText, origin, originText, renderRoute],
+    [destination, origin, renderRoute],
   )
 
   const swapDirection = useCallback(async () => {
@@ -95,6 +154,14 @@ export function useRoutePlanner() {
     [destination, renderRoute],
   )
 
+  const clearSuggestions = useCallback((type: SearchType) => {
+    if (type === 'origin') {
+      setOriginSuggestions([])
+    } else {
+      setDestinationSuggestions([])
+    }
+  }, [])
+
   useEffect(() => {
     void renderRoute(origin, destination)
   }, [renderRoute])
@@ -106,12 +173,15 @@ export function useRoutePlanner() {
     route,
     originText,
     destinationText,
+    originSuggestions,
+    destinationSuggestions,
     isLoading,
     errorMessage,
-    setOriginText,
-    setDestinationText,
-    searchAndSetPoint,
+    setOriginText: handleOriginTextChange,
+    setDestinationText: handleDestinationTextChange,
+    selectPlace,
     swapDirection,
     locateMe,
+    clearSuggestions,
   }
 }

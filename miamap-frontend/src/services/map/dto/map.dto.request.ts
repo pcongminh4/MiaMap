@@ -17,7 +17,12 @@ export type SearchBoundingBoxPlacesRequest = {
 	limit?: number
 }
 
-export type BoundingBoxPlace = {
+export type SearchByNameOrAddressRequest = {
+	searchText: string
+	limit?: number
+}
+
+export type SearchResult = {
 	placeId: number
 	name: string
 	category: string
@@ -28,15 +33,10 @@ export type BoundingBoxPlace = {
 	reviewCount: number
 }
 
-export type NearbyPlace = {
-	placeId: number
-	name: string
-	category: string
-	address: string | null
-	latitude: number
-	longitude: number
-	rating: number
-	reviewCount: number
-	distanceInMeters: number
+export type FindRouteRequest = {
+	startLatitude: number
+	startLongitude: number
+	endLatitude: number
+	endLongitude: number
 }
 

@@ -2,7 +2,8 @@ import { useEffect } from 'react'
 import { Icon } from 'leaflet'
 import type { LatLngTuple, Map as LeafletMap } from 'leaflet'
 import { CircleMarker, MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
-import type { BoundingBoxPlace } from '../../../services/map/types'
+import type { BoundingBoxPlaceResponse } from '../../../services/map/dto/map.dto.response'
+
 
 type MapBridgeProps = {
   onMapReady: (map: LeafletMap) => void
@@ -13,7 +14,7 @@ type HomeMapProps = {
   origin: LatLngTuple
   destination: LatLngTuple
   route: LatLngTuple[]
-  boundingBoxPlaces: BoundingBoxPlace[]
+  boundingBoxPlaces: BoundingBoxPlaceResponse[]
   maxMapZoom: number
   onMapReady: (map: LeafletMap) => void
 }
@@ -106,18 +107,25 @@ export function HomeMap({ mapCenter, origin, destination, route, boundingBoxPlac
         />
       )}
 
-      {boundingBoxPlaces.map((place) => (
-        <Marker
-          key={place.placeId}
-          position={[place.latitude, place.longitude]}
-          icon={getPlaceIcon(place.category)}
-        >
-          <Tooltip direction="top" offset={[0, -8]}>
-            <div className="text-xs font-semibold text-slate-800">{place.name}</div>
-            <div className="text-[11px] text-slate-600">{place.category}</div>
-          </Tooltip>
-        </Marker>
-      ))}
+      {boundingBoxPlaces.map((place) => {
+        const lat = place.location?.latitude
+        const lng = place.location?.longitude
+        if (typeof lat !== 'number' || typeof lng !== 'number' || Number.isNaN(lat) || Number.isNaN(lng)) {
+          return null
+        }
+        return (
+          <Marker
+            key={place.placeId}
+            position={[lat, lng]}
+            icon={getPlaceIcon(place.category)}
+          >
+            <Tooltip direction="top" offset={[0, -8]}>
+              <div className="text-xs font-semibold text-slate-800">{place.name}</div>
+              <div className="text-[11px] text-slate-600">{place.category}</div>
+            </Tooltip>
+          </Marker>
+        )
+      })}
 
       <CircleMarker center={origin} radius={9} pathOptions={{ color: '#0ea5e9', fillColor: '#38bdf8', fillOpacity: 1, weight: 3 }}>
         <Tooltip direction="top" offset={[0, -8]} permanent>

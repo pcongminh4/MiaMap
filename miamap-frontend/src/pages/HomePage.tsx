@@ -6,8 +6,9 @@ import { SearchPanel } from '../features/home/components/SearchPanel'
 import { TopRightActions } from '../features/home/components/TopRightActions'
 import { maxMapZoom } from '../features/home/constants/map.constants'
 import { useRoutePlanner } from '../features/home/hooks/useRoutePlanner'
-import { mapService } from '../services'
-import type { BoundingBoxPlace } from '../services/map/types'
+import type { BoundingBoxPlaceResponse } from '../services/map/dto/map.dto.response'
+import { mapService } from '../services/map'
+
 
 export function HomePage() {
   const {
@@ -17,17 +18,20 @@ export function HomePage() {
     route,
     originText,
     destinationText,
+    originSuggestions,
+    destinationSuggestions,
     isLoading,
     errorMessage,
     setOriginText,
     setDestinationText,
-    searchAndSetPoint,
+    selectPlace,
     swapDirection,
     locateMe,
+    clearSuggestions,
   } = useRoutePlanner()
   const [map, setMap] = useState<LeafletMap | null>(null)
   const [currentZoom, setCurrentZoom] = useState(13)
-  const [boundingBoxPlaces, setBoundingBoxPlaces] = useState<BoundingBoxPlace[]>([])
+  const [boundingBoxPlaces, setBoundingBoxPlaces] = useState<BoundingBoxPlaceResponse[]>([])
   const [nearbyError, setNearbyError] = useState('')
   const boundingBoxDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -97,7 +101,6 @@ export function HomePage() {
           maxLongitude: Math.max(...longitudes),
           limit: 200,
         })
-
         setBoundingBoxPlaces(places)
       } catch {
         setNearbyError('Khong tai duoc dia diem trong vung.')
@@ -128,7 +131,7 @@ export function HomePage() {
       }
     }
   }, [map])
-          
+
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-[#e8efe8] text-slate-900">
@@ -147,10 +150,13 @@ export function HomePage() {
         destinationText={destinationText}
         onOriginTextChange={setOriginText}
         onDestinationTextChange={setDestinationText}
-        onSearch={searchAndSetPoint}
         onSwap={swapDirection}
         isLoading={isLoading}
         errorMessage={errorMessage}
+        originSuggestions={originSuggestions}
+        destinationSuggestions={destinationSuggestions}
+        onSelectPlace={selectPlace}
+        onClearSuggestions={clearSuggestions}
       />
 
       <TopRightActions />
