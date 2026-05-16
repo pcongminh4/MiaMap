@@ -14,6 +14,8 @@ export function useRoutePlanner() {
   const [route, setRoute] = useState<LatLngTuple[]>([defaultOrigin, defaultDestination])
   const [isLoading, setIsLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [totalDistanceMeters, setTotalDistanceMeters] = useState<number | null>(null)
+  const [routeFound, setRouteFound] = useState(false)
 
   const [originSuggestions, setOriginSuggestions] = useState<BackendSearchByNameOrAddressResponse[]>([])
   const [destinationSuggestions, setDestinationSuggestions] = useState<BackendSearchByNameOrAddressResponse[]>([])
@@ -25,16 +27,32 @@ export function useRoutePlanner() {
     return [(origin[0] + destination[0]) / 2, (origin[1] + destination[1]) / 2]
   }, [origin, destination])
 
-  const renderRoute = useCallback(async (nextOrigin: LatLngTuple, nextDestination: LatLngTuple) => {
+  const renderFindRoute = useCallback(async (nextOrigin: LatLngTuple, nextDestination: LatLngTuple) => {
     setIsLoading(true)
     setErrorMessage('')
 
     try {
-      const points = await mapService.getDrivingRoute(nextOrigin, nextDestination)
-      setRoute(points)
+      const result = await mapService.findRoute({
+        startLatitude: nextOrigin[0],
+        startLongitude: nextOrigin[1],
+        endLatitude: nextDestination[0],
+        endLongitude: nextDestination[1],
+      })
+
+      setRouteFound(result.found)
+      setTotalDistanceMeters(result.totalDistanceMeters)
+
+      if (result.found && result.pathPoints.length > 0) {
+        setRoute(result.pathPoints)
+      } else {
+        setRoute([nextOrigin, nextDestination])
+        setErrorMessage('Khong tim thay duong di.')
+      }
     } catch {
       setRoute([nextOrigin, nextDestination])
-      setErrorMessage('Khong lay duoc route online. Dang hien duong noi 2 diem.')
+      setRouteFound(false)
+      setTotalDistanceMeters(null)
+      setErrorMessage('Khong lay duoc route. Dang hien duong noi 2 diem.')
     } finally {
       setIsLoading(false)
     }
@@ -106,15 +124,15 @@ export function useRoutePlanner() {
         setOriginText(place.name)
         setOrigin(coords)
         setOriginSuggestions([])
-        await renderRoute(coords, destination)
+        await renderFindRoute(coords, destination)
       } else {
         setDestinationText(place.name)
         setDestination(coords)
         setDestinationSuggestions([])
-        await renderRoute(origin, coords)
+        await renderFindRoute(origin, coords)
       }
     },
-    [destination, origin, renderRoute],
+    [destination, origin, renderFindRoute],
   )
 
   const swapDirection = useCallback(async () => {
@@ -126,8 +144,8 @@ export function useRoutePlanner() {
     setOriginText(destinationText)
     setDestinationText(originText)
 
-    await renderRoute(nextOrigin, nextDestination)
-  }, [destination, destinationText, origin, originText, renderRoute])
+    await renderFindRoute(nextOrigin, nextDestination)
+  }, [destination, destinationText, origin, originText, renderFindRoute])
 
   const locateMe = useCallback(
     (map: LeafletMap | null) => {
@@ -141,7 +159,7 @@ export function useRoutePlanner() {
           const current: LatLngTuple = [position.coords.latitude, position.coords.longitude]
           setOrigin(current)
           map?.flyTo(current, Math.max(map.getZoom(), 14))
-          await renderRoute(current, destination)
+          await renderFindRoute(current, destination)
         },
         () => {
           setErrorMessage('Khong lay duoc vi tri hien tai.')
@@ -151,7 +169,7 @@ export function useRoutePlanner() {
         },
       )
     },
-    [destination, renderRoute],
+    [destination, renderFindRoute],
   )
 
   const clearSuggestions = useCallback((type: SearchType) => {
@@ -163,8 +181,8 @@ export function useRoutePlanner() {
   }, [])
 
   useEffect(() => {
-    void renderRoute(origin, destination)
-  }, [renderRoute])
+    void renderFindRoute(origin, destination)
+  }, [renderFindRoute])
 
   return {
     mapCenter,
@@ -177,6 +195,8 @@ export function useRoutePlanner() {
     destinationSuggestions,
     isLoading,
     errorMessage,
+    totalDistanceMeters,
+    routeFound,
     setOriginText: handleOriginTextChange,
     setDestinationText: handleDestinationTextChange,
     selectPlace,

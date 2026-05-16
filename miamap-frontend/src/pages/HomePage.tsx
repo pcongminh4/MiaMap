@@ -22,6 +22,8 @@ export function HomePage() {
     destinationSuggestions,
     isLoading,
     errorMessage,
+    totalDistanceMeters,
+    routeFound,
     setOriginText,
     setDestinationText,
     selectPlace,
@@ -160,6 +162,12 @@ export function HomePage() {
       />
 
       <TopRightActions />
+
+      {totalDistanceMeters !== null && (
+        <div className="pointer-events-none absolute top-5 right-5 z-20 rounded-lg bg-white/95 px-3 py-2 text-sm font-medium text-slate-700 shadow">
+          Khoảng cách: {routeFound ? (totalDistanceMeters / 1000).toFixed(2) + ' km' : 'Không tìm thấy đường đi'}
+        </div>
+      )}
 
       <div className="pointer-events-none absolute bottom-5 left-5 z-20 rounded-lg bg-white/95 px-3 py-2 text-xs font-medium text-slate-700 shadow">
         Bounding box places: {boundingBoxPlaces.length}
