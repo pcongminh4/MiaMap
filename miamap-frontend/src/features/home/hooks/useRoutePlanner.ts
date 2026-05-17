@@ -9,9 +9,9 @@ type SearchType = 'origin' | 'destination'
 export function useRoutePlanner() {
   const [originText, setOriginText] = useState('')
   const [destinationText, setDestinationText] = useState('')
-  const [origin, setOrigin] = useState<LatLngTuple>(defaultOrigin)
-  const [destination, setDestination] = useState<LatLngTuple>(defaultDestination)
-  const [route, setRoute] = useState<LatLngTuple[]>([defaultOrigin, defaultDestination])
+  const [origin, setOrigin] = useState<LatLngTuple | null>(null)
+  const [destination, setDestination] = useState<LatLngTuple | null>(null)
+  const [route, setRoute] = useState<LatLngTuple[] | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [totalDistanceMeters, setTotalDistanceMeters] = useState<number | null>(null)
@@ -24,7 +24,11 @@ export function useRoutePlanner() {
   const destinationDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const mapCenter = useMemo<LatLngTuple>(() => {
-    return [(origin[0] + destination[0]) / 2, (origin[1] + destination[1]) / 2]
+    if (origin && destination) {
+      return [(origin[0] + destination[0]) / 2, (origin[1] + destination[1]) / 2]
+    }
+
+    return origin ?? destination ?? defaultOrigin
   }, [origin, destination])
 
   const renderFindRoute = useCallback(async (nextOrigin: LatLngTuple, nextDestination: LatLngTuple) => {
@@ -45,11 +49,11 @@ export function useRoutePlanner() {
       if (result.found && result.pathPoints.length > 0) {
         setRoute(result.pathPoints)
       } else {
-        setRoute([nextOrigin, nextDestination])
+        setRoute(null)
         setErrorMessage('Khong tim thay duong di.')
       }
     } catch {
-      setRoute([nextOrigin, nextDestination])
+      setRoute(null)
       setRouteFound(false)
       setTotalDistanceMeters(null)
       setErrorMessage('Khong lay duoc route. Dang hien duong noi 2 diem.')
@@ -124,18 +128,34 @@ export function useRoutePlanner() {
         setOriginText(place.name)
         setOrigin(coords)
         setOriginSuggestions([])
-        await renderFindRoute(coords, destination)
+        if (destination) {
+          await renderFindRoute(coords, destination)
+        } else {
+          setRoute(null)
+          setTotalDistanceMeters(null)
+          setRouteFound(false)
+        }
       } else {
         setDestinationText(place.name)
         setDestination(coords)
         setDestinationSuggestions([])
-        await renderFindRoute(origin, coords)
+        if (origin) {
+          await renderFindRoute(origin, coords)
+        } else {
+          setRoute(null)
+          setTotalDistanceMeters(null)
+          setRouteFound(false)
+        }
       }
     },
     [destination, origin, renderFindRoute],
   )
 
   const swapDirection = useCallback(async () => {
+    if (!origin || !destination) {
+      return
+    }
+
     const nextOrigin = destination
     const nextDestination = origin
 
@@ -159,7 +179,13 @@ export function useRoutePlanner() {
           const current: LatLngTuple = [position.coords.latitude, position.coords.longitude]
           setOrigin(current)
           map?.flyTo(current, Math.max(map.getZoom(), 14))
-          await renderFindRoute(current, destination)
+          if (destination) {
+            await renderFindRoute(current, destination)
+          } else {
+            setRoute(null)
+            setTotalDistanceMeters(null)
+            setRouteFound(false)
+          }
         },
         () => {
           setErrorMessage('Khong lay duoc vi tri hien tai.')
@@ -179,10 +205,6 @@ export function useRoutePlanner() {
       setDestinationSuggestions([])
     }
   }, [])
-
-  useEffect(() => {
-    void renderFindRoute(origin, destination)
-  }, [renderFindRoute])
 
   return {
     mapCenter,

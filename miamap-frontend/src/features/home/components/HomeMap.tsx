@@ -11,9 +11,9 @@ type MapBridgeProps = {
 
 type HomeMapProps = {
   mapCenter: LatLngTuple
-  origin: LatLngTuple
-  destination: LatLngTuple
-  route: LatLngTuple[]
+  origin: LatLngTuple | null
+  destination: LatLngTuple | null
+  route: LatLngTuple[] | null
   boundingBoxPlaces: BoundingBoxPlaceResponse[]
   maxMapZoom: number
   onMapReady: (map: LeafletMap) => void
@@ -94,7 +94,7 @@ export function HomeMap({ mapCenter, origin, destination, route, boundingBoxPlac
         url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
       />
 
-      {route.length > 1 && (
+      {route && route.length > 1 && (
         <Polyline
           positions={route}
           pathOptions={{
@@ -127,17 +127,21 @@ export function HomeMap({ mapCenter, origin, destination, route, boundingBoxPlac
         )
       })}
 
-      <CircleMarker center={origin} radius={9} pathOptions={{ color: '#0ea5e9', fillColor: '#38bdf8', fillOpacity: 1, weight: 3 }}>
-        <Tooltip direction="top" offset={[0, -8]} permanent>
-          Điểm xuất phát
-        </Tooltip>
-      </CircleMarker>
+      {origin && (
+        <CircleMarker center={origin} radius={9} pathOptions={{ color: '#0ea5e9', fillColor: '#38bdf8', fillOpacity: 1, weight: 3 }}>
+          <Tooltip direction="top" offset={[0, -8]} permanent>
+            Điểm xuất phát
+          </Tooltip>
+        </CircleMarker>
+      )}
 
-      <CircleMarker center={destination} radius={9} pathOptions={{ color: '#ef4444', fillColor: '#f87171', fillOpacity: 1, weight: 3 }}>
-        <Tooltip direction="top" offset={[0, -8]} permanent>
-          Điểm đến
-        </Tooltip>
-      </CircleMarker>
+      {destination && (
+        <CircleMarker center={destination} radius={9} pathOptions={{ color: '#ef4444', fillColor: '#f87171', fillOpacity: 1, weight: 3 }}>
+          <Tooltip direction="top" offset={[0, -8]} permanent>
+            Điểm đến
+          </Tooltip>
+        </CircleMarker>
+      )}
     </MapContainer>
   )
 }

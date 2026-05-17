@@ -69,7 +69,7 @@ export function HomePage() {
   }, [map])
 
   useEffect(() => {
-    if (!map || route.length < 2) {
+    if (!map || !route || route.length < 2) {
       return
     }
 
