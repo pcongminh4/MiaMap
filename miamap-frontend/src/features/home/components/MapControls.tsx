@@ -1,3 +1,5 @@
+"use client"
+
 type MapControlsProps = {
   onLocateMe: () => void
   onZoomIn: () => void

@@ -1,6 +1,7 @@
 import axios from 'axios'
 
-const baseURL = import.meta.env.VITE_API_BASE_URL
+const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL
+
 export const http = axios.create({
   baseURL,
   timeout: 10000,

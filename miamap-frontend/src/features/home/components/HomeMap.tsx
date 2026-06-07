@@ -1,9 +1,10 @@
+"use client"
+
 import { useEffect } from 'react'
 import { Icon } from 'leaflet'
 import type { LatLngTuple, Map as LeafletMap } from 'leaflet'
 import { CircleMarker, MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import type { BoundingBoxPlaceResponse } from '../../../services/map/dto/map.dto.response'
-
 
 type MapBridgeProps = {
   onMapReady: (map: LeafletMap) => void
@@ -89,7 +90,7 @@ export function HomeMap({ mapCenter, origin, destination, route, boundingBoxPlac
     <MapContainer center={mapCenter} zoom={13} minZoom={4} maxZoom={maxMapZoom} className="absolute inset-0 z-0">
       <MapBridge onMapReady={onMapReady} />
       <TileLayer
-        attribution='&copy; OpenStreetMap contributors &copy; CARTO'
+        attribution="&copy; OpenStreetMap contributors &copy; CARTO"
         maxZoom={maxMapZoom}
         url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
       />
@@ -113,12 +114,9 @@ export function HomeMap({ mapCenter, origin, destination, route, boundingBoxPlac
         if (typeof lat !== 'number' || typeof lng !== 'number' || Number.isNaN(lat) || Number.isNaN(lng)) {
           return null
         }
+
         return (
-          <Marker
-            key={place.placeId}
-            position={[lat, lng]}
-            icon={getPlaceIcon(place.category)}
-          >
+          <Marker key={place.placeId} position={[lat, lng]} icon={getPlaceIcon(place.category)}>
             <Tooltip direction="top" offset={[0, -8]}>
               <div className="text-xs font-semibold text-slate-800">{place.name}</div>
               <div className="text-[11px] text-slate-600">{place.category}</div>
@@ -128,17 +126,25 @@ export function HomeMap({ mapCenter, origin, destination, route, boundingBoxPlac
       })}
 
       {origin && (
-        <CircleMarker center={origin} radius={9} pathOptions={{ color: '#0ea5e9', fillColor: '#38bdf8', fillOpacity: 1, weight: 3 }}>
+        <CircleMarker
+          center={origin}
+          radius={9}
+          pathOptions={{ color: '#0ea5e9', fillColor: '#38bdf8', fillOpacity: 1, weight: 3 }}
+        >
           <Tooltip direction="top" offset={[0, -8]} permanent>
-            Điểm xuất phát
+            Diem xuat phat
           </Tooltip>
         </CircleMarker>
       )}
 
       {destination && (
-        <CircleMarker center={destination} radius={9} pathOptions={{ color: '#ef4444', fillColor: '#f87171', fillOpacity: 1, weight: 3 }}>
+        <CircleMarker
+          center={destination}
+          radius={9}
+          pathOptions={{ color: '#ef4444', fillColor: '#f87171', fillOpacity: 1, weight: 3 }}
+        >
           <Tooltip direction="top" offset={[0, -8]} permanent>
-            Điểm đến
+            Diem den
           </Tooltip>
         </CircleMarker>
       )}

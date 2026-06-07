@@ -1,3 +1,5 @@
+"use client"
+
 import type { BackendSearchByNameOrAddressResponse } from '../../../services/map/dto/map.dto.response'
 
 type SearchType = 'origin' | 'destination'
@@ -14,6 +16,8 @@ type SearchPanelProps = {
   destinationSuggestions: BackendSearchByNameOrAddressResponse[]
   onSelectPlace: (type: SearchType, place: BackendSearchByNameOrAddressResponse) => void
   onClearSuggestions: (type: SearchType) => void
+  onClearOrigin: () => void
+  onClearDestination: () => void
 }
 
 function SearchInput({
@@ -70,9 +74,7 @@ function SearchInput({
                   {place.category.charAt(0).toUpperCase()}
                 </span>
                 <span className="flex-1 truncate font-medium text-slate-800">{place.name}</span>
-                {place.rating > 0 && (
-                  <span className="text-xs text-yellow-500">★ {place.rating.toFixed(1)}</span>
-                )}
+                {place.rating > 0 && <span className="text-xs text-yellow-500">* {place.rating.toFixed(1)}</span>}
               </button>
             </li>
           ))}
@@ -94,6 +96,8 @@ export function SearchPanel({
   destinationSuggestions,
   onSelectPlace,
   onClearSuggestions,
+  onClearOrigin,
+  onClearDestination,
 }: SearchPanelProps) {
   return (
     <aside className="absolute left-3 top-3 z-20 w-[400px] max-w-[calc(100%-24px)] rounded-2xl bg-white/96 p-2.5 shadow-[0_14px_40px_rgba(0,0,0,0.2)] md:left-5 md:top-5 md:max-w-[calc(100%-40px)] md:p-3.5">
@@ -103,7 +107,7 @@ export function SearchPanel({
             <path d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        <h1 className="text-base font-bold leading-none tracking-tight text-slate-900 md:text-lg">Chỉ đường lái xe</h1>
+        <h1 className="text-base font-bold leading-none tracking-tight text-slate-900 md:text-lg">Chi duong lai xe</h1>
         <span className="w-9" />
       </div>
 
@@ -122,11 +126,11 @@ export function SearchPanel({
             onChange={onOriginTextChange}
             onSelect={(place) => onSelectPlace('origin', place)}
             onClear={() => {
-              onOriginTextChange('')
+              onClearOrigin()
               onClearSuggestions('origin')
             }}
             suggestions={originSuggestions}
-            placeholder="Chọn điểm xuất phát"
+            placeholder="Chon diem xuat phat"
             inputId="origin-input"
           />
 
@@ -135,11 +139,11 @@ export function SearchPanel({
             onChange={onDestinationTextChange}
             onSelect={(place) => onSelectPlace('destination', place)}
             onClear={() => {
-              onDestinationTextChange('')
+              onClearDestination()
               onClearSuggestions('destination')
             }}
             suggestions={destinationSuggestions}
-            placeholder="Chọn điểm đến"
+            placeholder="Chon diem den"
             inputId="destination-input"
           />
         </div>
@@ -160,7 +164,7 @@ export function SearchPanel({
             <circle cx="12" cy="12" r="9" />
             <path d="M12 7v5l3 2" />
           </svg>
-          Rời đi ngay
+          Roi di ngay
           <svg viewBox="0 0 24 24" className="h-3 w-3 md:h-4 md:w-4" fill="currentColor">
             <path d="M7 10l5 5 5-5" />
           </svg>
