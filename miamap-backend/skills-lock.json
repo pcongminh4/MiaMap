@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "skills": {
+    "api-documentation": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": "skills/api-documentation/SKILL.md",
+      "computedHash": "b26bc15c69a845dafd8aba75320486479fd9e98500c328e6b4c44aa584b3f494"
+    },
+    "csharp-clean-architecture": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": "skills/csharp-clean-architecture/SKILL.md",
+      "computedHash": "8553135dfed86f6606b15f4dfdf3fb029e6855fa1f83edaceef287e3b62e826a"
+    },
+    "dotnet-test-guidelines": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": "skills/dotnet-test-guidelines/SKILL.md",
+      "computedHash": "9b8427deda0b65d11ad663557d04f0a9d08524f30522023416b7724779e72d49"
+    },
+    "ef-core-migration": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": "skills/ef-core-migration/SKILL.md",
+      "computedHash": "e73327206732741f3dc9475b9d9b42d7f7cb7d1057d8eb28d7371889fb4891b8"
+    }
+  }
+}
