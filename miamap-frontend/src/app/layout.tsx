@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import './globals.css'
 import { Providers } from './providers'
+import { Toast } from '../features/common/components/Toast'
 
 export const metadata: Metadata = {
   title: 'MiaMap',
@@ -16,7 +17,10 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="vi">
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <Toast />
+        </Providers>
       </body>
     </html>
   )

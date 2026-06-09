@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import type { LatLngTuple } from 'leaflet'
 import { mapService } from '../../../services/map'
 import type { BoundingBoxPlaceResponse, BackendSearchByNameOrAddressResponse } from '../../../services/map/dto/map.dto.response'
-import type { BoundingBoxBounds } from '../../../services/queries/query-keys'
+import type { SearchBoundingBoxPlacesRequest } from '../../../services/map/dto/map.dto.request'
 import { queryKeys } from '../../../services/queries/query-keys'
 
 export function useSearchPlacesQuery(searchText: string, limit = 6) {
@@ -35,23 +35,17 @@ export function useFindRouteQuery(origin: LatLngTuple | null, destination: LatLn
   })
 }
 
-export function useBoundingBoxPlacesQuery(bounds: BoundingBoxBounds | null, limit = 200) {
+export function useBoundingBoxPlacesQuery(request: SearchBoundingBoxPlacesRequest | null) {
   return useQuery<BoundingBoxPlaceResponse[]>({
-    queryKey: queryKeys.boundingBox(bounds, limit),
+    queryKey: queryKeys.boundingBox(request),
     queryFn: () => {
-      if (!bounds) {
+      if (!request) {
         throw new Error('Bounding box inputs are missing.')
       }
 
-      return mapService.boundingBoxSearch({
-        minLatitude: bounds.minLatitude,
-        maxLatitude: bounds.maxLatitude,
-        minLongitude: bounds.minLongitude,
-        maxLongitude: bounds.maxLongitude,
-        limit,
-      })
+      return mapService.boundingBoxSearch(request)
     },
-    enabled: Boolean(bounds),
+    enabled: Boolean(request),
     staleTime: 15_000,
   })
 }

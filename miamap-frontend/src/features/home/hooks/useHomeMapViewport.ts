@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { LatLngTuple, Map as LeafletMap } from 'leaflet'
 import { maxMapZoom } from '../constants/map.constants'
 import { useBoundingBoxPlacesQuery } from '../queries/home.queries'
-import type { BoundingBoxBounds } from '../../../services/queries/query-keys'
+import type { SearchBoundingBoxPlacesRequest } from '../../../services/map/dto/map.dto.request'
 
 type UseHomeMapViewportParams = {
   route: LatLngTuple[] | null
@@ -11,7 +11,7 @@ type UseHomeMapViewportParams = {
 export function useHomeMapViewport({ route }: UseHomeMapViewportParams) {
   const [map, setMap] = useState<LeafletMap | null>(null)
   const [currentZoom, setCurrentZoom] = useState(13)
-  const [boundingBoxBounds, setBoundingBoxBounds] = useState<BoundingBoxBounds | null>(null)
+  const [boundingBoxBounds, setBoundingBoxBounds] = useState<SearchBoundingBoxPlacesRequest | null>(null)
   const boundingBoxDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const boundingBoxQuery = useBoundingBoxPlacesQuery(boundingBoxBounds)
