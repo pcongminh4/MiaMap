@@ -42,6 +42,12 @@
       "sourceType": "local",
       "skillPath": "skills/leaflet-map-guidelines/SKILL.md",
       "computedHash": "66bd9c609e32c18184c03df0bba986b1c72fe26424bf6e50d91f66ce8aa534f3"
+    },
+    "planning-and-documentation": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": "skills/planning-and-documentation/SKILL.md",
+      "computedHash": "904b42e72c73d9b9e77ea3d61158809582e55e9603ceca8dd48575e1839c9296"
     }
   }
 }

@@ -66,6 +66,12 @@
       "sourceType": "local",
       "skillPath": "skills/domain-events/SKILL.md",
       "computedHash": "b385135eab0b8ebeda94e689e08464b98553496aa699ae6015e8119e3b9a9c08"
+    },
+    "planning-and-documentation": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": "skills/planning-and-documentation/SKILL.md",
+      "computedHash": "904b42e72c73d9b9e77ea3d61158809582e55e9603ceca8dd48575e1839c9296"
     }
   }
 }
