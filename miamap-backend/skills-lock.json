@@ -60,6 +60,12 @@
       "sourceType": "local",
       "skillPath": "skills/spatial-data-rules/SKILL.md",
       "computedHash": "7de71d11361786dab3f83e2835463be78ef418c95197a66b3899767e0ded50ea"
+    },
+    "domain-events": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": "skills/domain-events/SKILL.md",
+      "computedHash": "b385135eab0b8ebeda94e689e08464b98553496aa699ae6015e8119e3b9a9c08"
     }
   }
 }
