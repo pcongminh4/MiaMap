@@ -1,6 +1,24 @@
 {
   "version": 1,
   "skills": {
+    "api-format-specification": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": "skills/api-format-specification/SKILL.md",
+      "computedHash": "1dab3472aa8084c31c5fed2c689aec4840685245e6c002f6a2256095b2ec35b6"
+    },
+    "react-query-guidelines": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": "skills/react-query-guidelines/SKILL.md",
+      "computedHash": "936d2297cae14a04f1501bf16ef2c418d77c2e0fbcc57c915cb1181bce295967"
+    },
+    "tailwind-styling-guidelines": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": "skills/tailwind-styling-guidelines/SKILL.md",
+      "computedHash": "210d6a0a0a7f18064dbd253e6263fcb8b0836bb901225237dbb1d188d46149ee"
+    },
     "git-commit": {
       "source": "github/awesome-copilot",
       "sourceType": "github",
@@ -18,6 +36,12 @@
       "sourceType": "github",
       "skillPath": "skills/writing-guidelines/SKILL.md",
       "computedHash": "25aa3a33a97bddbcb1847ce4a6169106ec25e5b19b15b99c66e75ab383866ef2"
+    },
+    "leaflet-map-guidelines": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": "skills/leaflet-map-guidelines/SKILL.md",
+      "computedHash": "66bd9c609e32c18184c03df0bba986b1c72fe26424bf6e50d91f66ce8aa534f3"
     }
   }
 }

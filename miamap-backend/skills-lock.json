@@ -7,6 +7,18 @@
       "skillPath": "skills/api-documentation/SKILL.md",
       "computedHash": "b26bc15c69a845dafd8aba75320486479fd9e98500c328e6b4c44aa584b3f494"
     },
+    "architectural-boundaries": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": "skills/architectural-boundaries/SKILL.md",
+      "computedHash": "e6e57f088fcb62bd9bf1f415fc08533a1e8a99c1ead9357a19a2521c7963eb50"
+    },
+    "api-format-specification": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": "skills/api-format-specification/SKILL.md",
+      "computedHash": "1dab3472aa8084c31c5fed2c689aec4840685245e6c002f6a2256095b2ec35b6"
+    },
     "csharp-clean-architecture": {
       "source": "local",
       "sourceType": "local",
@@ -24,6 +36,30 @@
       "sourceType": "local",
       "skillPath": "skills/ef-core-migration/SKILL.md",
       "computedHash": "e73327206732741f3dc9475b9d9b42d7f7cb7d1057d8eb28d7371889fb4891b8"
+    },
+    "ef-core-performance": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": "skills/ef-core-performance/SKILL.md",
+      "computedHash": "4f95ee4c53fa76540f25faa5d100a4ee2dc73f07e6f4f147488199530ff32c5d"
+    },
+    "api-security-rules": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": "skills/api-security-rules/SKILL.md",
+      "computedHash": "39208dd27c3282563262f2c787b4a51de992966c4a7e41b0c374ae9c8d11264d"
+    },
+    "logging-observability": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": "skills/logging-observability/SKILL.md",
+      "computedHash": "71de91b5c697e44c2d3ec589b1c4ae5cc7b9f037a8651e150791637ba5edd7f9"
+    },
+    "spatial-data-rules": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": "skills/spatial-data-rules/SKILL.md",
+      "computedHash": "7de71d11361786dab3f83e2835463be78ef418c95197a66b3899767e0ded50ea"
     }
   }
 }
