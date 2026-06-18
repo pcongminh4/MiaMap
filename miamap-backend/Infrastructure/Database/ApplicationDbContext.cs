@@ -1,4 +1,4 @@
-using Application.Abstractions.Data;
+using Application.Common.Abstractions.Data;
 using Domain.Places;
 using Domain.Users;
 using Microsoft.EntityFrameworkCore;
@@ -15,11 +15,23 @@ public sealed class ApplicationDbContext : DbContext, IUnitOfWork
 
 	public DbSet<User> Users => Set<User>();
 
+	public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
 	public DbSet<Place> Places => Set<Place>();
+
+	public DbSet<Report> Reports => Set<Report>();
+
+	public DbSet<ReportVote> ReportVotes => Set<ReportVote>();
 
 	public DbSet<Node> Nodes => Set<Node>();
 
 	public DbSet<Road> Roads => Set<Road>();
+
+	public DbSet<RawOsmNode> RawOsmNodes => Set<RawOsmNode>();
+
+	public DbSet<RawOsmWay> RawOsmWays => Set<RawOsmWay>();
+
+	public DbSet<RawOsmPlace> RawOsmPlaces => Set<RawOsmPlace>();
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{

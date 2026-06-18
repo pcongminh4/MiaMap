@@ -10,6 +10,7 @@ public static class DependencyInjection
 {
     public const string CorsPolicyName = "DefaultCorsPolicy";
     public const string AuthCookieName = "access_token";
+    public const string RefreshCookieName = "refresh_token";
 
     public static IServiceCollection AddPresentation(this IServiceCollection services, IConfiguration configuration)
     {

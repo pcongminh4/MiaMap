@@ -48,12 +48,7 @@ function SearchInput({
           placeholder={placeholder}
         />
         {value && (
-          <button
-            type="button"
-            className="ml-auto text-slate-500"
-            aria-label="Clear"
-            onClick={onClear}
-          >
+          <button type="button" className="ml-auto text-slate-500" aria-label="Xóa" onClick={onClear}>
             <svg viewBox="0 0 24 24" className="h-4 w-4 md:h-5 md:w-5" fill="none" stroke="currentColor" strokeWidth="2.4">
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
@@ -74,7 +69,7 @@ function SearchInput({
                   {place.category.charAt(0).toUpperCase()}
                 </span>
                 <span className="flex-1 truncate font-medium text-slate-800">{place.name}</span>
-                {place.rating > 0 && <span className="text-xs text-yellow-500">* {place.rating.toFixed(1)}</span>}
+                {place.rating > 0 && <span className="text-xs text-yellow-500">★ {place.rating.toFixed(1)}</span>}
               </button>
             </li>
           ))}
@@ -107,7 +102,7 @@ export function SearchPanel({
             <path d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        <h1 className="text-base font-bold leading-none tracking-tight text-slate-900 md:text-lg">Chi duong lai xe</h1>
+        <h1 className="text-base font-bold leading-none tracking-tight text-slate-900 md:text-lg">Chỉ đường lái xe</h1>
         <span className="w-9" />
       </div>
 
@@ -130,7 +125,7 @@ export function SearchPanel({
               onClearSuggestions('origin')
             }}
             suggestions={originSuggestions}
-            placeholder="Chon diem xuat phat"
+            placeholder="Chọn điểm xuất phát"
             inputId="origin-input"
           />
 
@@ -143,12 +138,12 @@ export function SearchPanel({
               onClearSuggestions('destination')
             }}
             suggestions={destinationSuggestions}
-            placeholder="Chon diem den"
+            placeholder="Chọn điểm đến"
             inputId="destination-input"
           />
         </div>
 
-        <button type="button" className="self-center rounded-full p-1 text-slate-600 transition hover:bg-slate-100" aria-label="Swap direction" onClick={() => void onSwap()}>
+        <button type="button" className="self-center rounded-full p-1 text-slate-600 transition hover:bg-slate-100" aria-label="Đổi chiều" onClick={() => void onSwap()}>
           <svg viewBox="0 0 24 24" className="h-5 w-5 md:h-6 md:w-6" fill="none" stroke="currentColor" strokeWidth="2.2">
             <path d="M7 4v15" />
             <path d="M4 7l3-3 3 3" />
@@ -164,13 +159,13 @@ export function SearchPanel({
             <circle cx="12" cy="12" r="9" />
             <path d="M12 7v5l3 2" />
           </svg>
-          Roi di ngay
+          Rời đi ngay
           <svg viewBox="0 0 24 24" className="h-3 w-3 md:h-4 md:w-4" fill="currentColor">
             <path d="M7 10l5 5 5-5" />
           </svg>
         </button>
 
-        {isLoading && <p className="mt-1.5 text-xs text-sky-600">Dang tim duong di...</p>}
+        {isLoading && <p className="mt-1.5 text-xs text-sky-600">Đang tìm đường đi...</p>}
         {errorMessage && <p className="mt-1.5 text-xs text-red-600">{errorMessage}</p>}
       </div>
     </aside>

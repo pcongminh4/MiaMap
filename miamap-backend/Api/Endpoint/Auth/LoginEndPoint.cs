@@ -35,13 +35,25 @@ public sealed class LoginEndPoint : IEndPoint
 						Expires = response.ExpiresAtUtc
 					});
 
-				return Results.Ok(response);
+				httpContext.Response.Cookies.Append(
+					Api.DependencyInjection.RefreshCookieName,
+					response.RefreshToken,
+					new CookieOptions
+					{
+						HttpOnly = true,
+						Secure = httpContext.Request.IsHttps,
+						SameSite = SameSiteMode.Lax,
+						Path = "/auth",
+						Expires = response.RefreshTokenExpiresAtUtc
+					});
+
+				return Results.Ok(new { userId = response.UserId });
 			})
 			.WithTags(Tags.Auth)
 			.WithName("LoginUser")
 			.WithSummary("Authenticates a user")
-			.WithDescription("Authenticates user credentials and stores the JWT access token in an HttpOnly cookie. Requires CSRF token.")
-			.Produces<LoginResult>(StatusCodes.Status200OK)
+			.WithDescription("Authenticates user credentials and stores the tokens in HttpOnly cookies.")
+			.Produces(StatusCodes.Status200OK)
 			.ProducesProblem(StatusCodes.Status400BadRequest)
 			.ProducesProblem(StatusCodes.Status500InternalServerError);
 	}

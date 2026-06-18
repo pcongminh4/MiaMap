@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect } from 'react'
+import { Fragment, useEffect } from 'react'
 import { Icon } from 'leaflet'
 import type { LatLngTuple, Map as LeafletMap } from 'leaflet'
-import { CircleMarker, MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import { CircleMarker, MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
 import type { BoundingBoxPlaceResponse } from '../../../services/map/dto/map.dto.response'
 
 type MapBridgeProps = {
@@ -16,8 +16,11 @@ type HomeMapProps = {
   destination: LatLngTuple | null
   route: LatLngTuple[] | null
   boundingBoxPlaces: BoundingBoxPlaceResponse[]
+  selectedPlaceId: number | null
   maxMapZoom: number
   onMapReady: (map: LeafletMap) => void
+  onSelectPlace: (place: BoundingBoxPlaceResponse) => void
+  onMapBackgroundClick: () => void
 }
 
 const categoryIconPathMap: Record<string, string> = {
@@ -85,10 +88,32 @@ function MapBridge({ onMapReady }: MapBridgeProps) {
   return null
 }
 
-export function HomeMap({ mapCenter, origin, destination, route, boundingBoxPlaces, maxMapZoom, onMapReady }: HomeMapProps) {
+function MapInteractionBridge({ onMapBackgroundClick }: { onMapBackgroundClick: () => void }) {
+  useMapEvents({
+    click: () => {
+      onMapBackgroundClick()
+    },
+  })
+
+  return null
+}
+
+export function HomeMap({
+  mapCenter,
+  origin,
+  destination,
+  route,
+  boundingBoxPlaces,
+  selectedPlaceId,
+  maxMapZoom,
+  onMapReady,
+  onSelectPlace,
+  onMapBackgroundClick,
+}: HomeMapProps) {
   return (
     <MapContainer center={mapCenter} zoom={13} minZoom={4} maxZoom={maxMapZoom} className="absolute inset-0 z-0">
       <MapBridge onMapReady={onMapReady} />
+      <MapInteractionBridge onMapBackgroundClick={onMapBackgroundClick} />
       <TileLayer
         attribution="&copy; OpenStreetMap contributors &copy; CARTO"
         maxZoom={maxMapZoom}
@@ -116,12 +141,30 @@ export function HomeMap({ mapCenter, origin, destination, route, boundingBoxPlac
         }
 
         return (
-          <Marker key={place.placeId} position={[lat, lng]} icon={getPlaceIcon(place.category)}>
-            <Tooltip direction="top" offset={[0, -8]}>
-              <div className="text-xs font-semibold text-slate-800">{place.name}</div>
-              <div className="text-[11px] text-slate-600">{place.category}</div>
-            </Tooltip>
-          </Marker>
+          <Fragment key={place.placeId}>
+            {selectedPlaceId === place.placeId && (
+              <CircleMarker
+                center={[lat, lng]}
+                radius={22}
+                pathOptions={{ color: '#0ea5e9', fillColor: '#38bdf8', fillOpacity: 0.16, weight: 2.5 }}
+              />
+            )}
+            <Marker
+              position={[lat, lng]}
+              icon={getPlaceIcon(place.category)}
+              eventHandlers={{
+                click: (event) => {
+                  event.originalEvent.stopPropagation()
+                  onSelectPlace(place)
+                },
+              }}
+            >
+              <Tooltip direction="top" offset={[0, -8]}>
+                <div className="text-xs font-semibold text-slate-800">{place.name}</div>
+                <div className="text-[11px] text-slate-600">{place.category}</div>
+              </Tooltip>
+            </Marker>
+          </Fragment>
         )
       })}
 
@@ -132,7 +175,7 @@ export function HomeMap({ mapCenter, origin, destination, route, boundingBoxPlac
           pathOptions={{ color: '#0ea5e9', fillColor: '#38bdf8', fillOpacity: 1, weight: 3 }}
         >
           <Tooltip direction="top" offset={[0, -8]} permanent>
-            Diem xuat phat
+            Điểm xuất phát
           </Tooltip>
         </CircleMarker>
       )}
@@ -144,7 +187,7 @@ export function HomeMap({ mapCenter, origin, destination, route, boundingBoxPlac
           pathOptions={{ color: '#ef4444', fillColor: '#f87171', fillOpacity: 1, weight: 3 }}
         >
           <Tooltip direction="top" offset={[0, -8]} permanent>
-            Diem den
+            Điểm đến
           </Tooltip>
         </CircleMarker>
       )}

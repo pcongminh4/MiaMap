@@ -18,7 +18,7 @@ namespace Infrastructure.Database.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.0")
+                .HasAnnotation("ProductVersion", "10.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "postgis");
@@ -172,6 +172,209 @@ namespace Infrastructure.Database.Migrations
                     b.ToTable("places", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.Places.RawOsmNode", b =>
+                {
+                    b.Property<long>("Id")
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    b.Property<Point>("Location")
+                        .IsRequired()
+                        .HasColumnType("geometry(point, 4326)")
+                        .HasColumnName("location");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Tags")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("tags");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Location")
+                        .HasDatabaseName("ix_raw_osm_nodes_location");
+
+                    b.ToTable("raw_osm_nodes", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Places.RawOsmPlace", b =>
+                {
+                    b.Property<long>("Id")
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("address");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("category");
+
+                    b.Property<Point>("Location")
+                        .IsRequired()
+                        .HasColumnType("geometry(point, 4326)")
+                        .HasColumnName("location");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Tags")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("tags");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Location")
+                        .HasDatabaseName("ix_raw_osm_places_location");
+
+                    b.ToTable("raw_osm_places", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Places.RawOsmWay", b =>
+                {
+                    b.Property<long>("Id")
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Highway")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("highway");
+
+                    b.Property<string>("Maxspeed")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("maxspeed");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("name");
+
+                    b.PrimitiveCollection<long[]>("NodeIds")
+                        .IsRequired()
+                        .HasColumnType("bigint[]")
+                        .HasColumnName("node_ids");
+
+                    b.Property<string>("Oneway")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("oneway");
+
+                    b.Property<string>("Tags")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("tags");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("raw_osm_ways", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Places.Report", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<int>("Downvotes")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("downvotes");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at_utc");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<Point>("Location")
+                        .IsRequired()
+                        .HasColumnType("geometry(point, 4326)")
+                        .HasColumnName("location");
+
+                    b.Property<string>("ReportType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("report_type");
+
+                    b.Property<string>("SubType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("sub_type");
+
+                    b.Property<int>("Upvotes")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("upvotes");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("Location")
+                        .HasDatabaseName("ix_reports_location");
+
+                    b.ToTable("reports", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Places.ReportVote", b =>
+                {
+                    b.Property<int>("ReportId")
+                        .HasColumnType("integer")
+                        .HasColumnName("report_id");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("user_id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<bool>("IsUpvote")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_upvote");
+
+                    b.HasKey("ReportId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("report_votes", (string)null);
+                });
+
             modelBuilder.Entity("Domain.Places.Road", b =>
                 {
                     b.Property<int>("Id")
@@ -254,6 +457,49 @@ namespace Infrastructure.Database.Migrations
                     b.ToTable("roads", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.Users.RefreshToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at_utc");
+
+                    b.Property<bool>("IsRevoked")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_revoked");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("token");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("refresh_tokens", (string)null);
+                });
+
             modelBuilder.Entity("Domain.Users.User", b =>
                 {
                     b.Property<int>("Id")
@@ -313,6 +559,30 @@ namespace Infrastructure.Database.Migrations
                     b.Navigation("NearestNode");
                 });
 
+            modelBuilder.Entity("Domain.Places.Report", b =>
+                {
+                    b.HasOne("Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.Places.ReportVote", b =>
+                {
+                    b.HasOne("Domain.Places.Report", null)
+                        .WithMany()
+                        .HasForeignKey("ReportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Domain.Places.Road", b =>
                 {
                     b.HasOne("Domain.Places.Node", "EndNode")
@@ -330,6 +600,15 @@ namespace Infrastructure.Database.Migrations
                     b.Navigation("EndNode");
 
                     b.Navigation("StartNode");
+                });
+
+            modelBuilder.Entity("Domain.Users.RefreshToken", b =>
+                {
+                    b.HasOne("Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Domain.Places.Node", b =>

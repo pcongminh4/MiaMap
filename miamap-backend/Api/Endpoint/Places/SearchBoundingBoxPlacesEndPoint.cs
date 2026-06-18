@@ -1,6 +1,6 @@
 using Application.Places.SearchBoundingBoxPlaces;
 using MediatR;
-using Application.Abstractions.Data;
+using Application.Common.Abstractions.Data;
 using Application.Results;
 
 namespace Api.Endpoint.Places;

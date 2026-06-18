@@ -1,21 +1,9 @@
 import { useMemo, useState } from 'react'
 import type { LatLngTuple } from 'leaflet'
 import { defaultOrigin } from '../constants/map.constants'
+import type { RouteSelectionApi } from '../types/home.types'
 
-export type RouteSelectionApi = {
-  originText: string
-  destinationText: string
-  origin: LatLngTuple | null
-  destination: LatLngTuple | null
-  statusMessage: string
-  setOriginText: (value: string) => void
-  setDestinationText: (value: string) => void
-  setOrigin: (coords: LatLngTuple | null) => void
-  setDestination: (coords: LatLngTuple | null) => void
-  setStatusMessage: (message: string) => void
-}
-
-export function useRouteSelection() {
+export function useRouteSelection(): RouteSelectionApi & { mapCenter: LatLngTuple } {
   const [originText, setOriginText] = useState('')
   const [destinationText, setDestinationText] = useState('')
   const [origin, setOrigin] = useState<LatLngTuple | null>(null)

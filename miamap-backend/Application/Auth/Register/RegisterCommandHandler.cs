@@ -1,5 +1,5 @@
-using Application.Abstractions.Authentication;
-using Application.Abstractions.Data;
+using Application.Common.Abstractions.Authentication;
+using Application.Common.Abstractions.Data;
 using Domain.Users;
 using MediatR;
 

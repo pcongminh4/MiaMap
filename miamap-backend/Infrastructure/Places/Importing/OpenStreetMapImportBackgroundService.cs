@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Application.Abstractions.Data;
+using Application.Common.Abstractions.Data;
 using Application.Results;
 using Domain.Places;
 using Infrastructure.Database;
@@ -99,6 +99,32 @@ public sealed class OpenStreetMapImportBackgroundService(
 
 	private async Task ImportAreaAsync(OpenStreetMapImportArea area, CancellationToken cancellationToken)
 	{
+		logger.LogInformation("Clearing existing OSM data and staging tables for a clean import in area {AreaName}...", area.Name);
+		using (var scope = scopeFactory.CreateScope())
+		{
+			var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+			
+			// Clear staging tables first
+			await dbContext.RawOsmPlaces.ExecuteDeleteAsync(cancellationToken);
+			await dbContext.RawOsmWays.ExecuteDeleteAsync(cancellationToken);
+			await dbContext.RawOsmNodes.ExecuteDeleteAsync(cancellationToken);
+
+			// Delete roads first because of foreign key references from roads to nodes
+			var deletedRoadsCount = await dbContext.Roads.Where(r => r.Source == "osm").ExecuteDeleteAsync(cancellationToken);
+			var deletedNodesCount = await dbContext.Nodes.Where(n => n.Source == "osm").ExecuteDeleteAsync(cancellationToken);
+			
+			// Reset nearest node IDs of places to null
+			var updatedPlacesCount = await dbContext.Places.Where(p => p.Source == "osm").ExecuteUpdateAsync(
+				s => s.SetProperty(p => p.NearestNodeId, (int?)null), 
+				cancellationToken);
+
+			logger.LogInformation(
+				"Cleared existing data: deletedRoads={DeletedRoads}, deletedNodes={DeletedNodes}, updatedPlaces={UpdatedPlaces}.",
+				deletedRoadsCount,
+				deletedNodesCount,
+				updatedPlacesCount);
+		}
+
 		await ImportPlacesAsync(area, cancellationToken);
 		await ImportRoadsAsync(area, cancellationToken);
 		await LinkPlacesToNearestNodesAsync(area, cancellationToken);
@@ -108,31 +134,64 @@ public sealed class OpenStreetMapImportBackgroundService(
 	{
 		var payload = await ExecuteOverpassQueryAsync(BuildPlaceOverpassQuery(area), cancellationToken);
 
-		var records = payload.Elements
+		var rawPlaces = payload.Elements
 			.Where(element => element.Type == "node")
 			.Where(element => element.Latitude.HasValue && element.Longitude.HasValue)
 			.Where(element => !string.IsNullOrWhiteSpace(element.Tags.Name))
-			.Select(ToUpsertRequest)
+			.Select(element => new RawOsmPlace
+			{
+				Id = element.Id,
+				Location = new Point(element.Longitude!.Value, element.Latitude!.Value) { SRID = 4326 },
+				Name = element.Tags.Name ?? string.Empty,
+				Category = ResolveCategory(element.Tags),
+				Address = ResolveAddress(element.Tags),
+				Tags = JsonSerializer.Serialize(element.Tags.ToDictionary(), JsonOptions)
+			})
 			.ToList();
 
-		if (records.Count == 0)
+		if (rawPlaces.Count == 0)
 		{
 			logger.LogInformation("No OpenStreetMap places found for area {AreaName}.", area.Name);
 			return;
+		}
+
+		using (var scope = scopeFactory.CreateScope())
+		{
+			var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+			await dbContext.RawOsmPlaces.AddRangeAsync(rawPlaces, cancellationToken);
+			await dbContext.SaveChangesAsync(cancellationToken);
+		}
+
+		List<RawOsmPlace> dbRawPlaces;
+		using (var scope = scopeFactory.CreateScope())
+		{
+			var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+			dbRawPlaces = await dbContext.RawOsmPlaces.AsNoTracking().ToListAsync(cancellationToken);
 		}
 
 		var created = 0;
 		var updated = 0;
 		var batchSize = Math.Max(1, _options.BatchSize);
 
-		using var scope = scopeFactory.CreateScope();
-		var placeRepository = scope.ServiceProvider.GetRequiredService<IPlaceRepository>();
-		var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+		using var outerScope = scopeFactory.CreateScope();
+		var placeRepository = outerScope.ServiceProvider.GetRequiredService<IPlaceRepository>();
+		var unitOfWork = outerScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
-		foreach (var batch in records.Chunk(batchSize))
+		foreach (var batch in dbRawPlaces.Chunk(batchSize))
 		{
-			foreach (var record in batch)
+			foreach (var rawPlace in batch)
 			{
+				var record = new ExternalPlaceUpsertRequest(
+					Source: "osm",
+					ExternalId: rawPlace.Id.ToString(),
+					ExternalType: "node",
+					Name: rawPlace.Name,
+					Category: rawPlace.Category,
+					Address: rawPlace.Address,
+					Latitude: rawPlace.Location.Y,
+					Longitude: rawPlace.Location.X,
+					Tags: rawPlace.Tags);
+
 				var result = await placeRepository.UpsertExternalAsync(record, cancellationToken);
 				if (result.Created)
 				{
@@ -150,7 +209,7 @@ public sealed class OpenStreetMapImportBackgroundService(
 		logger.LogInformation(
 			"Imported OpenStreetMap places for area {AreaName}: total={Total}, created={Created}, updated={Updated}.",
 			area.Name,
-			records.Count,
+			dbRawPlaces.Count,
 			created,
 			updated);
 	}
@@ -159,21 +218,87 @@ public sealed class OpenStreetMapImportBackgroundService(
 	{
 		var payload = await ExecuteOverpassQueryAsync(BuildRoadOverpassQuery(area), cancellationToken);
 
-		var nodeElementsById = payload.Elements
+		var rawNodes = payload.Elements
 			.Where(element => element.Type == "node")
 			.Where(element => element.Latitude.HasValue && element.Longitude.HasValue)
-			.ToDictionary(element => element.Id);
+			.Select(element => new RawOsmNode
+			{
+				Id = element.Id,
+				Location = new Point(element.Longitude!.Value, element.Latitude!.Value) { SRID = 4326 },
+				Name = element.Tags.Name,
+				Tags = JsonSerializer.Serialize(element.Tags.ToDictionary(), JsonOptions)
+			})
+			.ToList();
 
-		var roadElements = payload.Elements
+		var rawWays = payload.Elements
 			.Where(element => element.Type == "way")
 			.Where(element => !string.IsNullOrWhiteSpace(element.Tags.Highway))
 			.Where(element => element.Nodes.Count >= 2)
+			.Select(element => new RawOsmWay
+			{
+				Id = element.Id,
+				NodeIds = element.Nodes.ToArray(),
+				Tags = JsonSerializer.Serialize(element.Tags.ToDictionary(), JsonOptions),
+				Highway = element.Tags.Highway,
+				Name = element.Tags.Name ?? element.Tags.Reference,
+				Oneway = element.Tags.Oneway,
+				Maxspeed = element.Tags.Maxspeed
+			})
 			.ToList();
 
-		if (roadElements.Count == 0)
+		using (var scope = scopeFactory.CreateScope())
+		{
+			var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+			await dbContext.RawOsmNodes.AddRangeAsync(rawNodes, cancellationToken);
+			await dbContext.RawOsmWays.AddRangeAsync(rawWays, cancellationToken);
+			await dbContext.SaveChangesAsync(cancellationToken);
+		}
+
+		List<RawOsmNode> dbRawNodes;
+		List<RawOsmWay> dbRawWays;
+		using (var scope = scopeFactory.CreateScope())
+		{
+			var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+			dbRawNodes = await dbContext.RawOsmNodes.AsNoTracking().ToListAsync(cancellationToken);
+			dbRawWays = await dbContext.RawOsmWays.AsNoTracking().ToListAsync(cancellationToken);
+		}
+
+		if (dbRawWays.Count == 0)
 		{
 			logger.LogInformation("No OpenStreetMap roads found for area {AreaName}.", area.Name);
 			return;
+		}
+
+		var rawNodesById = dbRawNodes.ToDictionary(n => n.Id);
+
+		// First, count occurrences of each node ID across all ways.
+		var nodeReferenceCounts = new Dictionary<long, int>();
+		var endpointNodes = new HashSet<long>();
+
+		foreach (var way in dbRawWays)
+		{
+			if (way.NodeIds.Length < 2)
+			{
+				continue;
+			}
+
+			endpointNodes.Add(way.NodeIds.First());
+			endpointNodes.Add(way.NodeIds.Last());
+
+			foreach (var nodeId in way.NodeIds)
+			{
+				nodeReferenceCounts[nodeId] = nodeReferenceCounts.GetValueOrDefault(nodeId) + 1;
+			}
+		}
+
+		// A node is a routing node if it is in endpointNodes OR if it's referenced in >= 2 ways.
+		var routingNodeIds = new HashSet<long>();
+		foreach (var kv in nodeReferenceCounts)
+		{
+			if (endpointNodes.Contains(kv.Key) || kv.Value >= 2)
+			{
+				routingNodeIds.Add(kv.Key);
+			}
 		}
 
 		var batchSize = Math.Max(1, _options.BatchSize);
@@ -184,52 +309,108 @@ public sealed class OpenStreetMapImportBackgroundService(
 		var nodeCache = new Dictionary<string, Node>(StringComparer.OrdinalIgnoreCase);
 		var roadCache = new Dictionary<string, Road>(StringComparer.OrdinalIgnoreCase);
 
-		using var scope = scopeFactory.CreateScope();
-		var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+		using var outerScope = scopeFactory.CreateScope();
+		var dbContextMain = outerScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-		foreach (var batch in roadElements.Chunk(batchSize))
+		foreach (var batch in dbRawWays.Chunk(batchSize))
 		{
-			foreach (var roadElement in batch)
+			foreach (var way in batch)
 			{
-				if (!TryBuildRoadGeometry(roadElement, nodeElementsById, out var geometry, out var pathNodes))
+				if (way.NodeIds.Length < 2)
 				{
 					continue;
 				}
 
-				var startNodeResult = await UpsertNodeAsync(dbContext, nodeCache, pathNodes.First(), cancellationToken);
-				createdNodes += startNodeResult.Created ? 1 : 0;
-				updatedNodes += startNodeResult.Created ? 0 : 1;
+				var startIndex = 0;
+				while (startIndex < way.NodeIds.Length - 1)
+				{
+					// Find next routing node
+					var nextRoutingIndex = -1;
+					for (int j = startIndex + 1; j < way.NodeIds.Length; j++)
+					{
+						if (routingNodeIds.Contains(way.NodeIds[j]))
+						{
+							nextRoutingIndex = j;
+							break;
+						}
+					}
 
-				var endNodeResult = await UpsertNodeAsync(dbContext, nodeCache, pathNodes.Last(), cancellationToken);
-				createdNodes += endNodeResult.Created ? 1 : 0;
-				updatedNodes += endNodeResult.Created ? 0 : 1;
+					if (nextRoutingIndex == -1)
+					{
+						nextRoutingIndex = way.NodeIds.Length - 1;
+					}
 
-				await dbContext.SaveChangesAsync(cancellationToken);
+					// Extract nodes for this segment
+					var segmentNodeIds = way.NodeIds
+						.Skip(startIndex)
+						.Take(nextRoutingIndex - startIndex + 1)
+						.ToList();
 
-				var roadResult = await UpsertRoadAsync(
-					dbContext,
-					roadCache,
-					roadElement,
-					geometry,
-					CalculateLengthMeters(pathNodes),
-					startNodeResult.Node.Id,
-					endNodeResult.Node.Id,
-					IsTruthy(roadElement.Tags.Oneway),
-					roadElement.Tags.Name ?? roadElement.Tags.Reference,
-					roadElement.Tags.Highway,
-					ParseSpeedLimit(roadElement.Tags.Maxspeed),
-					cancellationToken);
-				createdRoads += roadResult.Created ? 1 : 0;
-				updatedRoads += roadResult.Created ? 0 : 1;
+					// Resolve RawOsmNodes
+					var segmentNodes = new List<RawOsmNode>();
+					var resolvedAll = true;
+					foreach (var nodeId in segmentNodeIds)
+					{
+						if (!rawNodesById.TryGetValue(nodeId, out var rawNode))
+						{
+							resolvedAll = false;
+							break;
+						}
+						segmentNodes.Add(rawNode);
+					}
+
+					if (!resolvedAll || segmentNodes.Count < 2)
+					{
+						startIndex = nextRoutingIndex;
+						continue;
+					}
+
+					var startNodeResult = await UpsertNodeFromRawAsync(dbContextMain, nodeCache, segmentNodes.First(), cancellationToken);
+					createdNodes += startNodeResult.Created ? 1 : 0;
+					updatedNodes += startNodeResult.Created ? 0 : 1;
+
+					var endNodeResult = await UpsertNodeFromRawAsync(dbContextMain, nodeCache, segmentNodes.Last(), cancellationToken);
+					createdNodes += endNodeResult.Created ? 1 : 0;
+					updatedNodes += endNodeResult.Created ? 0 : 1;
+
+					await dbContextMain.SaveChangesAsync(cancellationToken);
+
+					var coordinates = segmentNodes
+						.Select(node => new Coordinate(node.Location.X, node.Location.Y))
+						.ToArray();
+					var geometry = new LineString(coordinates) { SRID = 4326 };
+					var lengthMeters = CalculateLengthMetersFromRaw(segmentNodes);
+
+					var segmentExternalId = $"{way.Id}_{segmentNodes.First().Id}_{segmentNodes.Last().Id}";
+
+					var roadResult = await UpsertRoadFromRawAsync(
+						dbContextMain,
+						roadCache,
+						way,
+						segmentExternalId,
+						geometry,
+						lengthMeters,
+						startNodeResult.Node.Id,
+						endNodeResult.Node.Id,
+						IsTruthy(way.Oneway),
+						way.Name,
+						way.Highway,
+						ParseSpeedLimit(way.Maxspeed),
+						cancellationToken);
+					createdRoads += roadResult.Created ? 1 : 0;
+					updatedRoads += roadResult.Created ? 0 : 1;
+
+					startIndex = nextRoutingIndex;
+				}
 			}
 
-			await dbContext.SaveChangesAsync(cancellationToken);
+			await dbContextMain.SaveChangesAsync(cancellationToken);
 		}
 
 		logger.LogInformation(
 			"Imported OpenStreetMap roads for area {AreaName}: total={Total}, nodesCreated={NodesCreated}, nodesUpdated={NodesUpdated}, roadsCreated={RoadsCreated}, roadsUpdated={RoadsUpdated}.",
 			area.Name,
-			roadElements.Count,
+			dbRawWays.Count,
 			createdNodes,
 			updatedNodes,
 			createdRoads,
@@ -298,13 +479,13 @@ public sealed class OpenStreetMapImportBackgroundService(
 			Tags: tagsJson);
 	}
 
-	private static async Task<(Node Node, bool Created)> UpsertNodeAsync(
+	private static async Task<(Node Node, bool Created)> UpsertNodeFromRawAsync(
 		ApplicationDbContext dbContext,
 		Dictionary<string, Node> nodeCache,
-		OverpassElement element,
+		RawOsmNode rawNode,
 		CancellationToken cancellationToken)
 	{
-		var externalId = element.Id.ToString();
+		var externalId = rawNode.Id.ToString();
 		if (nodeCache.TryGetValue(externalId, out var cachedNode))
 		{
 			return (cachedNode, false);
@@ -319,9 +500,9 @@ public sealed class OpenStreetMapImportBackgroundService(
 			var createdNode = Node.CreateFromExternal(
 				"osm",
 				externalId,
-				element.Latitude ?? 0,
-				element.Longitude ?? 0,
-				element.Tags.Name,
+				rawNode.Location.Y,
+				rawNode.Location.X,
+				rawNode.Name,
 				DateTime.UtcNow);
 
 			await dbContext.Nodes.AddAsync(createdNode, cancellationToken);
@@ -330,17 +511,18 @@ public sealed class OpenStreetMapImportBackgroundService(
 		}
 
 		existingNode.UpdateFromExternal(
-			element.Latitude ?? 0,
-			element.Longitude ?? 0,
-			element.Tags.Name);
+			rawNode.Location.Y,
+			rawNode.Location.X,
+			rawNode.Name);
 		nodeCache[externalId] = existingNode;
 		return (existingNode, false);
 	}
 
-	private static async Task<(Road Road, bool Created)> UpsertRoadAsync(
+	private static async Task<(Road Road, bool Created)> UpsertRoadFromRawAsync(
 		ApplicationDbContext dbContext,
 		Dictionary<string, Road> roadCache,
-		OverpassElement element,
+		RawOsmWay rawWay,
+		string externalId,
 		LineString geometry,
 		double lengthMeters,
 		int startNodeId,
@@ -351,7 +533,6 @@ public sealed class OpenStreetMapImportBackgroundService(
 		int maxSpeedKmh,
 		CancellationToken cancellationToken)
 	{
-		var externalId = element.Id.ToString();
 		if (roadCache.TryGetValue(externalId, out var cachedRoad))
 		{
 			return (cachedRoad, false);
@@ -391,6 +572,22 @@ public sealed class OpenStreetMapImportBackgroundService(
 			maxSpeedKmh);
 		roadCache[externalId] = existingRoad;
 		return (existingRoad, false);
+	}
+
+	private static double CalculateLengthMetersFromRaw(IReadOnlyList<RawOsmNode> pathNodes)
+	{
+		double total = 0;
+
+		for (var index = 1; index < pathNodes.Count; index++)
+		{
+			total += HaversineDistanceMeters(
+				pathNodes[index - 1].Location.Y,
+				pathNodes[index - 1].Location.X,
+				pathNodes[index].Location.Y,
+				pathNodes[index].Location.X);
+		}
+
+		return total;
 	}
 
 	private static bool TryBuildRoadGeometry(
@@ -531,57 +728,27 @@ public sealed class OpenStreetMapImportBackgroundService(
 
 	private async Task LinkPlacesToNearestNodesAsync(OpenStreetMapImportArea area, CancellationToken cancellationToken)
 	{
+		logger.LogInformation("Linking places to their nearest nodes using PostGIS index-assisted spatial lookup in area {AreaName}...", area.Name);
+		
 		using var scope = scopeFactory.CreateScope();
 		var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-		// Get all places in the area that don't have a nearest node yet
-		var places = await dbContext.Places
-			.Where(p => p.IsActive && p.NearestNodeId == null)
-			.ToListAsync(cancellationToken);
+		var linkedCount = await dbContext.Database.ExecuteSqlRawAsync(
+			@"UPDATE places p
+			  SET nearest_node_id = (
+				  SELECT n.id
+				  FROM nodes n
+				  WHERE n.is_active = true
+				  ORDER BY p.point <-> n.location
+				  LIMIT 1
+			  )
+			  WHERE p.is_active = true AND p.nearest_node_id IS NULL AND p.source = 'osm';",
+			cancellationToken);
 
-		if (places.Count == 0)
-		{
-			return;
-		}
-
-		// Get all nodes in the area
-		var nodes = await dbContext.Nodes
-			.Where(n => n.IsActive)
-			.ToListAsync(cancellationToken);
-
-		if (nodes.Count == 0)
-		{
-			logger.LogWarning("No nodes found in area {AreaName} to link places.", area.Name);
-			return;
-		}
-
-		var linkedCount = 0;
-
-		foreach (var place in places)
-		{
-			// Find the nearest node using distance calculation
-			var nearestNode = nodes.MinBy(node => 
-				HaversineDistanceMeters(
-					place.Point.Y,
-					place.Point.X,
-					node.Location.Y,
-					node.Location.X));
-
-			if (nearestNode != null)
-			{
-				place.LinkNearestNode(nearestNode.Id);
-				linkedCount++;
-			}
-		}
-
-		if (linkedCount > 0)
-		{
-			await dbContext.SaveChangesAsync(cancellationToken);
-			logger.LogInformation(
-				"Linked {LinkedCount} places to nearest nodes in area {AreaName}.",
-				linkedCount,
-				area.Name);
-		}
+		logger.LogInformation(
+			"Linked {LinkedCount} places to nearest nodes in area {AreaName}.",
+			linkedCount,
+			area.Name);
 	}
 
 	private sealed class OverpassResponse

@@ -1,5 +1,5 @@
 using System.Reflection;
-using Application.Abstractions.Behaviors;
+using Application.Common.Abstractions.Behaviors;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 

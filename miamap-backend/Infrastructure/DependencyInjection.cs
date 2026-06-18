@@ -1,5 +1,5 @@
-using Application.Abstractions.Authentication;
-using Application.Abstractions.Data;
+using Application.Common.Abstractions.Authentication;
+using Application.Common.Abstractions.Data;
 using Infrastructure.Authentication;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,7 +27,9 @@ public static class DependencyInjection
 
         services.AddScoped<IUnitOfWork>(serviceProvider => serviceProvider.GetRequiredService<ApplicationDbContext>());
         services.AddScoped<IPlaceRepository, PlaceRepository>();
+        services.AddScoped<IReportRepository, ReportRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IRoutingRepository, RoutingRepository>();
         services.AddScoped<IPasswordHasher, PasswordHasher>();
         services.AddScoped<IJwtService, TokenProvider>();

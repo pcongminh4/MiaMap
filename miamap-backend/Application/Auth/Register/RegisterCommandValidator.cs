@@ -1,4 +1,4 @@
-using Application.Abstractions.Data;
+using Application.Common.Abstractions.Data;
 using Domain.Users;
 using FluentValidation;
 

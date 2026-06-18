@@ -1,4 +1,4 @@
-using Application.Abstractions.Data;
+using Application.Common.Abstractions.Data;
 using Application.Results;
 using MediatR;
 
@@ -9,4 +9,4 @@ public sealed record SearchBoundingBoxPlacesQuery(
 	double MinLongitude,
 	double MaxLatitude,
 	double MaxLongitude,
-	int Limit) : IRequest<IReadOnlyList<BoundingBoxResult>>;
+	int Limit = 50) : IRequest<IReadOnlyList<BoundingBoxResult>>;

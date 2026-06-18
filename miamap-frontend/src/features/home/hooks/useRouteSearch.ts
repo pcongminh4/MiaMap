@@ -1,11 +1,9 @@
 import { useCallback, useState } from 'react'
 import type { LatLngTuple } from 'leaflet'
 import { useDebouncedValue } from '../../../hooks/useDebouncedValue'
-import { useSearchPlacesQuery } from '../queries/home.queries'
+import { useSearchPlacesQuery } from '../queries/useSearchPlacesQuery'
 import type { BackendSearchByNameOrAddressResponse } from '../../../services/map/dto/map.dto.response'
-import type { RouteSelectionApi } from './useRouteSelection'
-
-type SearchType = 'origin' | 'destination'
+import type { RouteSelectionApi, SearchType } from '../types/home.types'
 
 type RouteSearchApi = Pick<RouteSelectionApi, 'originText' | 'destinationText' | 'origin' | 'destination' | 'setOriginText' | 'setDestinationText' | 'setOrigin' | 'setDestination' | 'setStatusMessage'>
 

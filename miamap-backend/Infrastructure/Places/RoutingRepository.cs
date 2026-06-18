@@ -1,4 +1,4 @@
-using Application.Abstractions.Data;
+using Application.Common.Abstractions.Data;
 using Application.Places.FindRoute;
 using Domain.Places;
 using Infrastructure.Database;
@@ -70,18 +70,23 @@ public sealed class RoutingRepository(ApplicationDbContext dbContext) : IRouting
 		var graph = BuildGraph(nodesInBox, roadsInBox);
 
 		var routableNodes = nodesInBox
-		.Where(n =>
-			graph.ContainsKey(n.Id) &&
-			graph[n.Id].Count > 1)
-		.ToList();
+			.Where(n =>
+				graph.ContainsKey(n.Id) &&
+				graph[n.Id].Count > 0)
+			.ToList();
+
+		if (routableNodes.Count == 0)
+		{
+			return new FindRouteResult(false, [], 0);
+		}
 
 		var startNode = routableNodes
-	.OrderBy(n => n.Location.Distance(startPoint))
-	.First();
+			.OrderBy(n => n.Location.Distance(startPoint))
+			.First();
 
-var endNode = routableNodes
-	.OrderBy(n => n.Location.Distance(endPoint))
-	.First();	
+		var endNode = routableNodes
+			.OrderBy(n => n.Location.Distance(endPoint))
+			.First();
 
 		Console.WriteLine("=== START NODE ROADS ===");
 
@@ -158,28 +163,36 @@ var endNode = routableNodes
 			new(startLatitude, startLongitude)
 		};
 
-		// Add intermediate geometry points
+		// Add geometry points along the path
 		for (int i = 0; i < pathNodes.Count - 1; i++)
 		{
 			var fromNodeId = pathNodes[i];
 			var toNodeId = pathNodes[i + 1];
 
 			var road = roadsInBox.FirstOrDefault(r =>
-				(r.StartNodeId == fromNodeId &&
-				 r.EndNodeId == toNodeId) ||
-
-				(r.StartNodeId == toNodeId &&
-				 r.EndNodeId == fromNodeId &&
-				 !r.IsOneWay));
+				(r.StartNodeId == fromNodeId && r.EndNodeId == toNodeId) ||
+				(r.StartNodeId == toNodeId && r.EndNodeId == fromNodeId && !r.IsOneWay));
 
 			if (road?.Geometry != null)
 			{
 				var coords = road.Geometry.Coordinates;
-
-				for (int j = 1; j < coords.Length - 1; j++)
+				if (road.StartNodeId == fromNodeId)
 				{
-					pathPoints.Add(
-						new GeoPoint(coords[j].Y, coords[j].X));
+					// Forward direction: if it's the first segment, start at 0, otherwise skip the first point to avoid duplicate junction coordinates
+					int startIndex = (i == 0) ? 0 : 1;
+					for (int j = startIndex; j < coords.Length; j++)
+					{
+						pathPoints.Add(new GeoPoint(coords[j].Y, coords[j].X));
+					}
+				}
+				else
+				{
+					// Reverse direction: if it's the first segment, start at Length - 1, otherwise skip it to avoid duplicate junction coordinates
+					int startIndex = (i == 0) ? coords.Length - 1 : coords.Length - 2;
+					for (int j = startIndex; j >= 0; j--)
+					{
+						pathPoints.Add(new GeoPoint(coords[j].Y, coords[j].X));
+					}
 				}
 			}
 		}
@@ -200,14 +213,14 @@ var endNode = routableNodes
 
 		foreach (var road in roads)
 		{
-			// Add edge from start to end
-			if (graph.ContainsKey(road.StartNodeId))
+			// Add edge from start to end (only if both nodes exist in the graph)
+			if (graph.ContainsKey(road.StartNodeId) && graph.ContainsKey(road.EndNodeId))
 			{
 				graph[road.StartNodeId].Add((road.EndNodeId, road.Weight, road.IsOneWay));
 			}
 
-			// Add edge from end to start (unless one-way)
-			if (!road.IsOneWay && graph.ContainsKey(road.EndNodeId))
+			// Add edge from end to start (unless one-way and both nodes exist in the graph)
+			if (!road.IsOneWay && graph.ContainsKey(road.EndNodeId) && graph.ContainsKey(road.StartNodeId))
 			{
 				graph[road.EndNodeId].Add((road.StartNodeId, road.Weight, false));
 			}

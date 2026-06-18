@@ -75,7 +75,7 @@ export const mapService: IMapService = {
         MaxLatitude: request.maxLatitude,
         MinLongitude: request.minLongitude,
         MaxLongitude: request.maxLongitude,
-        Limit: request.limit,
+        Limit: request.limit ?? 50,
       },
     })
 

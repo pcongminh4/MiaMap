@@ -7,5 +7,5 @@ export const queryKeys = {
   route: (origin: LatLngTuple | null, destination: LatLngTuple | null) =>
     ['places', 'route', origin?.[0], origin?.[1], destination?.[0], destination?.[1]] as const,
   boundingBox: (request: SearchBoundingBoxPlacesRequest | null) =>
-    ['places', 'bounding-box', request?.minLatitude, request?.maxLatitude, request?.minLongitude, request?.maxLongitude, request?.limit] as const,
+    ['places', 'bounding-box', request?.minLatitude, request?.maxLatitude, request?.minLongitude, request?.maxLongitude, request?.limit ?? 50] as const,
 }

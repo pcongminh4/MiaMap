@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import type { LatLngTuple, Map as LeafletMap } from 'leaflet'
-import type { RouteSelectionApi } from './useRouteSelection'
+import type { RouteSelectionApi } from '../types/home.types'
 
 type RouteSearchActions = {
   clearSearchText: (type: 'origin' | 'destination') => void
