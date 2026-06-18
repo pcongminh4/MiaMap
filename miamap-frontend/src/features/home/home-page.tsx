@@ -10,6 +10,7 @@ import { TopRightActions } from './components/TopRightActions'
 import { maxMapZoom } from './constants/map.constants'
 import { useMapViewport } from './hooks/useMapViewport'
 import { useRoutePlanner } from './hooks/useRoutePlanner'
+import { AIAgentPanel } from './components/AIAgentPanel'
 
 const HomeMap = dynamic(() => import('./components/HomeMap').then((module) => module.HomeMap), {
   ssr: false,
@@ -17,6 +18,7 @@ const HomeMap = dynamic(() => import('./components/HomeMap').then((module) => mo
 
 export function HomePage() {
   const [selectedPlaceId, setSelectedPlaceId] = useState<number | null>(null)
+  const [extraSelectedPlace, setExtraSelectedPlace] = useState<BoundingBoxPlaceResponse | null>(null)
   const {
     mapCenter,
     origin,
@@ -40,12 +42,13 @@ export function HomePage() {
     clearDestination,
   } = useRoutePlanner()
   const { map, setMap, currentZoom, zoomIn, zoomOut, boundingBoxPlaces, nearbyError } = useMapViewport({ route })
-  const selectedPlace = useMemo(
-    () => boundingBoxPlaces.find((place) => place.placeId === selectedPlaceId) ?? null,
-    [boundingBoxPlaces, selectedPlaceId],
-  )
+  const selectedPlace = useMemo(() => {
+    if (selectedPlaceId === null) return null
+    return boundingBoxPlaces.find((place) => place.placeId === selectedPlaceId) ?? extraSelectedPlace
+  }, [boundingBoxPlaces, selectedPlaceId, extraSelectedPlace])
 
   const handleSelectMapPlace = (place: BoundingBoxPlaceResponse) => {
+    setExtraSelectedPlace(place)
     setSelectedPlaceId(place.placeId)
     map?.flyTo([place.location.latitude, place.location.longitude], Math.max(map.getZoom(), 15))
   }
@@ -102,6 +105,16 @@ export function HomePage() {
         place={selectedPlace}
         onClose={() => setSelectedPlaceId(null)}
         onRoute={handleRouteToPlace}
+      />
+
+      <AIAgentPanel
+        mapCenter={mapCenter}
+        onSelectPlace={(place) => {
+          handleSelectMapPlace(place)
+        }}
+        onDrawRoute={(place) => {
+          handleRouteToPlace(place)
+        }}
       />
 
       {totalDistanceMeters !== null && (

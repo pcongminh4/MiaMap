@@ -27,8 +27,8 @@ public sealed class SearchBoundingBoxPlacesQueryHandlerTests
 
 		var expectedResults = new List<BoundingBoxResult>
 		{
-			new(1, "Place A", "cafe", "123 Le Loi", new GeoPoint(10.77, 106.69), 4.5, 100),
-			new(2, "Place B", "restaurant", "456 Dong Khoi", new GeoPoint(10.78, 106.70), 4.0, 50)
+			new(1, "Place A", "cafe", "123 Le Loi", new GeoPoint(10.77, 106.69), 4.5, 100, null),
+			new(2, "Place B", "restaurant", "456 Dong Khoi", new GeoPoint(10.78, 106.70), 4.0, 50, null)
 		};
 
 		var placeRepository = Substitute.For<IPlaceRepository>();

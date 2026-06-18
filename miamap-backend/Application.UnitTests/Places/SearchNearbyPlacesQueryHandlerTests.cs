@@ -27,8 +27,8 @@ public sealed class SearchNearbyPlacesQueryHandlerTests
 
 		var expectedResults = new List<PlaceNearbyResult>
 		{
-			new(1, "Place A", "cafe", "123 Le Loi", new GeoPoint(10.771, 106.691), 4.5, 100, 120),
-			new(2, "Place B", "restaurant", "456 Dong Khoi", new GeoPoint(10.772, 106.692), 4.0, 50, 250)
+			new(1, "Place A", "cafe", "123 Le Loi", new GeoPoint(10.771, 106.691), 4.5, 100, 120, null),
+			new(2, "Place B", "restaurant", "456 Dong Khoi", new GeoPoint(10.772, 106.692), 4.0, 50, 250, null)
 		};
 
 		var placeRepository = Substitute.For<IPlaceRepository>();

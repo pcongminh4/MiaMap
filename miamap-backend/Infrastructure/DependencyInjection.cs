@@ -1,11 +1,13 @@
 using Application.Common.Abstractions.Authentication;
 using Application.Common.Abstractions.Data;
+using Application.Common.Abstractions.Agent;
 using Infrastructure.Authentication;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Infrastructure.Database;
 using Infrastructure.Places.Importing;
 using Infrastructure.Places;
+using Infrastructure.Agent;
 using Infrastructure.Users;
 using Microsoft.EntityFrameworkCore;
 
@@ -33,6 +35,7 @@ public static class DependencyInjection
         services.AddScoped<IRoutingRepository, RoutingRepository>();
         services.AddScoped<IPasswordHasher, PasswordHasher>();
         services.AddScoped<IJwtService, TokenProvider>();
+        services.AddHttpClient<IAgentService, AgentService>();
 
         services.Configure<OpenStreetMapImportOptions>(
             configuration.GetSection(OpenStreetMapImportOptions.SectionName));

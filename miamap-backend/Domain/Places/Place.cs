@@ -51,6 +51,8 @@ public sealed class Place
 
 	public string? Tags { get; private set; }
 
+	public string? ImageUrl { get; private set; }
+
 	public DateTime? LastSyncedAtUtc { get; private set; }
 
 	public DateTime CreatedAtUtc { get; private set; }
@@ -158,6 +160,12 @@ public sealed class Place
 	public void LinkNearestNode(int? nodeId)
 	{
 		NearestNodeId = nodeId;
+		UpdatedAtUtc = DateTime.UtcNow;
+	}
+
+	public void UpdateImageUrl(string? imageUrl)
+	{
+		ImageUrl = string.IsNullOrWhiteSpace(imageUrl) ? null : imageUrl.Trim();
 		UpdatedAtUtc = DateTime.UtcNow;
 	}
 

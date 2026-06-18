@@ -7,4 +7,5 @@ public sealed record SearchByNameOrAddressResult(
 	string? Address,
 	GeoPoint Location,
 	double Rating,
-	int ReviewCount);
+	int ReviewCount,
+	string? ImageUrl);

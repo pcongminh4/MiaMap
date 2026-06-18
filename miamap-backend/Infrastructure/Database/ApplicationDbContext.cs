@@ -19,6 +19,8 @@ public sealed class ApplicationDbContext : DbContext, IUnitOfWork
 
 	public DbSet<Place> Places => Set<Place>();
 
+	public DbSet<MenuItem> MenuItems => Set<MenuItem>();
+
 	public DbSet<Report> Reports => Set<Report>();
 
 	public DbSet<ReportVote> ReportVotes => Set<ReportVote>();

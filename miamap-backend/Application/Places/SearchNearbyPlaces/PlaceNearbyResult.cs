@@ -8,4 +8,5 @@ public sealed record PlaceNearbyResult(
 	GeoPoint Location,
 	double Rating,
 	int ReviewCount,
-	double DistanceInMeters);
+	double DistanceInMeters,
+	string? ImageUrl);

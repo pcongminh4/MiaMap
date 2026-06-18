@@ -7,5 +7,6 @@ public sealed record BoundingBoxResult(
 	string? Address,
 	GeoPoint Location,
 	double Rating,
-	int ReviewCount
+	int ReviewCount,
+	string? ImageUrl
 );

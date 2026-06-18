@@ -27,8 +27,8 @@ public sealed class SearchByNameOrAddressQueryHandlerTests
 
 		var expectedResults = new List<SearchByNameOrAddressResult>
 		{
-			new(1, "Highlands Coffee", "cafe", "123 Le Loi", new GeoPoint(10.772, 106.698), 4.2, 150),
-			new(2, "Trung Nguyen Legend", "cafe", "456 Dong Khoi", new GeoPoint(10.775, 106.695), 4.5, 200)
+			new(1, "Highlands Coffee", "cafe", "123 Le Loi", new GeoPoint(10.772, 106.698), 4.2, 150, null),
+			new(2, "Trung Nguyen Legend", "cafe", "456 Dong Khoi", new GeoPoint(10.775, 106.695), 4.5, 200, null)
 		};
 
 		var placeRepository = Substitute.For<IPlaceRepository>();

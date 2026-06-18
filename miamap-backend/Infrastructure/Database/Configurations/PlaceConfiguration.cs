@@ -64,6 +64,10 @@ public sealed class PlaceConfiguration : IEntityTypeConfiguration<Place>
 			.HasColumnName("tags")
 			.HasColumnType("jsonb");
 
+		builder.Property(place => place.ImageUrl)
+			.HasColumnName("image_url")
+			.HasMaxLength(1000);
+
 		builder.Property(place => place.LastSyncedAtUtc)
 			.HasColumnName("last_synced_at_utc");
 

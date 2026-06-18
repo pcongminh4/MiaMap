@@ -78,7 +78,8 @@ public sealed class PlaceRepository(ApplicationDbContext dbContext) : IPlaceRepo
 				Location = new GeoPoint(place.Point.Y, place.Point.X),
 				place.Rating,
 				place.ReviewCount,
-				DistanceInMeters = place.Point.Distance(searchPoint)
+				DistanceInMeters = place.Point.Distance(searchPoint),
+				place.ImageUrl
 			})
 			.Where(place => place.DistanceInMeters <= radiusInMeters)
 			.OrderBy(place => place.DistanceInMeters)
@@ -96,7 +97,8 @@ public sealed class PlaceRepository(ApplicationDbContext dbContext) : IPlaceRepo
 				place.Location,
 				place.Rating,
 				place.ReviewCount,
-				place.DistanceInMeters))
+				place.DistanceInMeters,
+				place.ImageUrl))
 			.ToList();
 	}
 
@@ -134,7 +136,8 @@ public sealed class PlaceRepository(ApplicationDbContext dbContext) : IPlaceRepo
 				place.Address,
 				new GeoPoint(place.Point.Y, place.Point.X),
 				place.Rating,
-				place.ReviewCount))
+				place.ReviewCount,
+				place.ImageUrl))
 			.ToListAsync(cancellationToken)
 			.ConfigureAwait(false);
 
@@ -180,7 +183,8 @@ public sealed class PlaceRepository(ApplicationDbContext dbContext) : IPlaceRepo
 				place.Address,
 				new GeoPoint(place.Point.Y, place.Point.X),
 				place.Rating,
-				place.ReviewCount))
+				place.ReviewCount,
+				place.ImageUrl))
 			.ToListAsync(cancellationToken);
 
 		return places;
